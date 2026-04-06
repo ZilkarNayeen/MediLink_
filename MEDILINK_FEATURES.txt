@@ -1,0 +1,185 @@
+================================================================================
+  MEDILINK — FEATURE LIST BY USER ROLE
+================================================================================
+
+
+════════════════════════════════════════
+  🧑 PATIENT FEATURES
+════════════════════════════════════════
+
+  ACCOUNT & PROFILE
+  • Register a new account with full name, email, and password
+  • Log in and stay authenticated for 7 days via JWT
+  • Edit personal health profile (phone, date of birth, blood group)
+  • Save allergies and emergency contact information
+  • Upload and change profile avatar photo
+  • View own profile page with all stored health data
+
+  DASHBOARD
+  • Personalised greeting based on time of day (morning/afternoon/evening)
+  • Quick-stats overview: total appointments, medical records, prescriptions
+  • Six shortcut action cards to all major features
+  • Language toggle between English, Bengali, and Arabic
+
+  APPOINTMENT BOOKING
+  • Book an appointment through a guided 2-step form
+  • Search for doctors by name with live autocomplete (debounced)
+  • Navigate autocomplete dropdown with keyboard (↑ ↓ Enter Escape)
+  • View selected doctor's weekly working hours before finalising time
+  • Auto-fill hospital name when arriving from a Hospital Profile page
+  • Receive a confirmation email after booking
+
+  CONSULTATION HISTORY
+  • View all past and upcoming appointments in one place
+  • Filter appointments by status (pending, confirmed, completed, cancelled)
+  • Read doctor's clinical notes attached to each appointment
+  • Request a follow-up on any completed appointment
+  • View prescriptions linked to each appointment
+
+  MEDICAL RECORDS
+  • View full electronic health record (EHR) history
+  • Records tagged by type: lab result, doctor note, X-ray, other
+  • Open file attachments (X-rays, PDFs) hosted on Cloudinary
+  • Records automatically linked back to the originating appointment
+
+  PRESCRIPTIONS
+  • View all prescriptions issued by doctors
+  • Each prescription shows medication, dosage, frequency, and dates
+  • Receive prescription details by email when a doctor writes one
+
+  REAL-TIME MESSAGING
+  • Start and view conversations with assigned doctors
+  • Send and receive text messages instantly (no page refresh)
+  • Attach and send files or images within the chat
+  • Auto-scroll to newest message; timestamps on every bubble
+
+  AI SYMPTOM CHECKER
+  • Open an AI chat modal directly from the dashboard
+  • Describe symptoms in plain text in a multi-turn conversation
+  • Receive specialist-type recommendations (not a diagnosis)
+  • Get directed to use SOS if symptoms indicate an emergency
+
+  SOS EMERGENCY DISPATCH
+  • One-tap SOS button on the dashboard
+  • Browser automatically captures live GPS coordinates
+  • GPS coordinates sent instantly to the Admin dispatch centre
+  • Real-time status feedback on screen (Locating → Dispatching → Done)
+
+  BLOOD BANK
+  • View registered blood donors on an interactive OpenStreetMap
+  • Filter donors by blood group and city
+  • Register as a blood donor with personal and medical details
+  • Submit urgent or emergency blood requests
+  • Browse all open blood requests with urgency indicators
+
+  MEDICAL DIRECTORY
+  • Access a categorised discovery hub with 6 healthcare sections
+  • Browse 18+ major Bangladeshi hospitals filterable by Division
+  • Search hospitals by name with live filtering
+  • View a hospital's full profile: address, phone, description
+  • See all Diagnostic Tests offered by a hospital (alphabetically sorted)
+  • See all Surgical Operations with exact ৳ pricing per service
+  • Tap "Book Consultation Here" on any hospital to pre-fill the booking form
+  • Browse Diagnostic Tests across all hospitals with expand/collapse cards
+  • Sort tests and operations by: Name A→Z, Name Z→A, Price Low→High,
+    Price High→Low, and Most Available
+  • Tap any hospital name inside a test/operation card to go to its profile
+
+
+════════════════════════════════════════
+  👨‍⚕️ DOCTOR FEATURES
+════════════════════════════════════════
+
+  ACCOUNT
+  • Log in via a dedicated Doctor login page (/doctor)
+  • Account created exclusively by an Admin (no self-registration)
+  • Separate JWT stored independently from patient sessions
+
+  APPOINTMENT MANAGEMENT
+  • View all incoming appointment requests in a filterable table
+  • Filter appointments by status (All, Pending, Confirmed, Completed, Cancelled)
+  • Accept (confirm) individual appointments with one click
+  • Decline (cancel) individual appointments with one click
+  • Add and edit clinical notes on any appointment
+
+  PATIENT RECORDS
+  • Search for any patient by name
+  • Access patient medical records only if a prior appointment link exists
+  • View a patient's full electronic health record history
+  • Upload new medical records (lab results, X-rays, clinical notes)
+  • Attach files to records via Cloudinary upload (PDF, images)
+
+  PRESCRIPTIONS
+  • Write prescriptions tied to specific appointments
+  • Specify medication name, dosage, frequency, start date, and end date
+  • Prescription is automatically emailed to the patient upon creation
+  • View all prescriptions previously written
+
+  PATIENT REFERRALS
+  • Search for another verified doctor on the platform by name
+  • Refer a patient to a specialist with written clinical notes
+  • View full history of referrals sent
+
+  FOLLOW-UP REQUESTS
+  • See follow-up requests submitted by patients
+  • Approve or reject each follow-up request
+  • Patient receives an automated email when a follow-up is approved
+
+  REAL-TIME MESSAGING
+  • View all conversations with patients in a split-panel chat interface
+  • Send and receive messages in real time (Socket.io)
+  • Attach and send files or images within the chat
+
+  WORKING HOURS / AVAILABILITY
+  • Set start time and end time for each day of the week
+  • Mark specific days as "Off" (removed from available booking slots)
+  • Schedule saved persistently to the database
+  • Schedule displayed to patients during appointment booking
+
+  PROFILE
+  • Update medical specialty (e.g., Cardiologist, Dermatologist, GP)
+  • Update phone number and contact information
+  • Upload and change profile avatar
+
+
+════════════════════════════════════════
+  🛡️ ADMIN FEATURES
+════════════════════════════════════════
+
+  ACCOUNT
+  • Log in via a dedicated Admin login page (/admin)
+  • Single admin account with credentials stored as environment variables
+  • Separate JWT session from patient and doctor sessions
+
+  PLATFORM ANALYTICS
+  • View 6 live stat cards refreshed on dashboard load:
+      – Total registered patients
+      – Total verified doctors
+      – Total appointments booked
+      – Total SOS emergency dispatches
+      – Total registered blood donors
+      – Total open blood requests
+
+  EMERGENCY SOS COMMAND
+  • View all active (pending) SOS signals on a live OpenStreetMap
+  • Map auto-refreshes every 10 seconds for new signals
+  • Each signal displayed as a pulsing 🚨 marker on the map
+  • Clicking a marker shows GPS coordinates and dispatch timestamp
+  • View each pending SOS as an actionable row below the map
+  • Click "✓ Acknowledge & Resolve" to permanently resolve a signal
+  • Resolved signals disappear from both the map and the list immediately
+
+  DOCTOR MANAGEMENT
+  • Register new doctor accounts via an inline form
+  • Set the doctor's full name, email, and initial password
+  • New doctor can log in immediately after registration
+  • Platform stats refresh automatically after each doctor is added
+
+  PERSONNEL OVERSIGHT
+  • View a scrollable table of the 10 most recently registered patients
+  • View a full roster table of all verified doctors on the platform
+  • Doctor roster shows name and active status badge
+
+================================================================================
+  END OF FEATURE LIST
+================================================================================
