@@ -1,0 +1,1455 @@
+================================================================================
+  MEDILINK — FULL TECHNICAL SYSTEM REPORT
+  Bangladesh Healthcare Discovery & Management Platform
+  Report Generated: April 2026
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+  1.  Platform Overview
+  2.  System Architecture
+  3.  System Design
+  4.  Database Schema (Data Models)
+  5.  Internal API Reference (All Endpoints)
+  6.  External APIs & Third-Party Services
+  7.  Real-Time Infrastructure (WebSocket / Socket.io)
+  8.  Feature Set — Separated by Role
+        8a. Patient Features
+        8b. Doctor Features
+        8c. Admin Features
+  9.  User Manual
+ 10.  Full Walkthrough
+
+================================================================================
+  SECTION 1 — PLATFORM OVERVIEW
+================================================================================
+
+MediLink is a full-stack, mobile-first healthcare discovery and management
+platform built specifically for Bangladesh. It serves three user roles —
+Patients, Doctors, and Admins — within a single unified web application.
+
+The platform allows patients to discover hospitals and medical services,
+book appointments, chat with doctors in real time, perform AI-assisted
+symptom triage, share medical records, and dispatch GPS-based SOS emergency
+alerts. Doctors receive, manage, and respond to those interactions through a
+dedicated clinical dashboard. Admins monitor the entire platform through a
+command center featuring live analytics and an emergency dispatch map.
+
+  Live URL   : https://medilink-ebon.vercel.app
+  Repository  : https://github.com/irrepressible007/medilink
+  Frontend    : Vercel (CDN-distributed, auto-deploy on push to main)
+  Backend     : Render (Node.js persistent web service)
+  Database    : MongoDB Atlas (cloud-hosted NoSQL)
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 2 — SYSTEM ARCHITECTURE
+================================================================================
+
+MediLink uses a DECOUPLED monorepo architecture with two separate applications
+sharing a single Git repository under /MediLink/MediLink/.
+
+  ┌───────────────────────────────────────────────────────────────────────┐
+  │                         MEDILINK ARCHITECTURE                         │
+  │                                                                       │
+  │   Browser / Mobile                                                    │
+  │   ┌──────────────────────────────────────────────────────────┐        │
+  │   │   React 19 SPA (Vite 7)                                  │        │
+  │   │   Vercel CDN — medilink-ebon.vercel.app                  │        │
+  │   │   React Router v7 (client-side routing)                  │        │
+  │   │   Socket.io-client (real-time messaging + calling)       │        │
+  │   │   React-Leaflet + OpenStreetMap (blood bank map)         │        │
+  │   └─────────────────┬────────────────────────────────────────┘        │
+  │                     │ HTTPS + WebSocket (wss://)                     │
+  │   ┌─────────────────▼────────────────────────────────────────┐        │
+  │   │   Express 5 API Server (Node.js ESM)                     │        │
+  │   │   Render.com — render.com web service                    │        │
+  │   │   JWT Authentication Middleware                          │        │
+  │   │   Rate Limiters (auth: 20/15min, AI: 15/1min)           │        │
+  │   │   CORS Whitelist (Vercel + localhost origins)            │        │
+  │   │   Socket.io Server (JWT-authenticated rooms)             │        │
+  │   │   node-cron Scheduler (appointment reminders)            │        │
+  │   │   Winston Logger                                         │        │
+  │   └─────────────────┬────────────────────────────────────────┘        │
+  │                     │ Prisma ORM + MongoDB Driver                    │
+  │   ┌─────────────────▼────────────────────────────────────────┐        │
+  │   │   MongoDB Atlas (NoSQL Cloud Database)                   │        │
+  │   │   13 Collections (Users, Appointments, Records, etc.)    │        │
+  │   └──────────────────────────────────────────────────────────┘        │
+  │                                                                       │
+  │   External Services:                                                  │
+  │   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐    │
+  │   │  Groq AI │  │SendGrid  │  │Cloudinary│  │ OpenStreetMap    │    │
+  │   │ LLaMA 3.1│  │  Email   │  │File/Image│  │ (Leaflet tiles)  │    │
+  │   └──────────┘  └──────────┘  └──────────┘  └──────────────────┘    │
+  └───────────────────────────────────────────────────────────────────────┘
+
+Tech Stack Summary
+------------------
+  Layer           | Technology
+  ─────────────────────────────────────────────────────
+  Frontend        | React 19, Vite 7, Vanilla CSS
+  Routing         | React Router DOM v7
+  Real-time       | Socket.io v4 (client + server)
+  Maps            | React-Leaflet v5 + Leaflet v1.9
+  i18n            | i18next + react-i18next
+  Backend         | Express 5, Node.js (ESM modules)
+  Auth            | JWT (jsonwebtoken), bcrypt v6
+  ORM             | Prisma v6 (MongoDB adapter)
+  Database        | MongoDB Atlas (NoSQL document DB)
+  Email           | @sendgrid/mail v8, nodemailer v8
+  File Upload     | Multer v2 → Cloudinary v2
+  AI/LLM          | Groq SDK v1 (llama-3.1-8b-instant)
+  Scheduling      | node-cron v4
+  Rate Limiting   | express-rate-limit v8
+  Logging         | Winston v3
+  Deployment FE   | Vercel (auto CI/CD from GitHub)
+  Deployment BE   | Render (persistent web service)
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 3 — SYSTEM DESIGN
+================================================================================
+
+3.1  Authentication Design
+---------------------------
+  - Three separate auth flows: Patient, Doctor, Admin.
+  - All flows use the same /api/auth router with role-specific endpoints.
+  - Passwords are hashed with bcrypt (salt rounds: 10) before storage.
+  - On successful login, the server signs a JWT containing:
+      { userId, email, role }     expires in 7 days
+  - The JWT is stored in localStorage keyed by role:
+      medilink_token          → Patient
+      medilink_doctor_token   → Doctor
+      medilink_admin_token    → Admin
+  - All protected API routes pass the token in the Authorization header:
+      Authorization: Bearer <JWT>
+  - The authMiddleware.js decodes and verifies the token, attaches
+    req.user = { userId, email, role } to every request.
+  - Socket.io also applies JWT auth via handshake middleware; invalid
+    tokens are rejected before any event is established.
+
+3.2  Rate Limiting Layers
+--------------------------
+  - Auth endpoints (login routes): max 20 requests per 15 minutes.
+  - AI endpoint (/api/ai): max 15 requests per minute.
+  - This prevents brute-force attacks and AI API cost overruns.
+
+3.3  File Upload Pipeline
+--------------------------
+  Multer buffers the file in memory → Cloudinary SDK uploads it → 
+  Cloudinary returns a secure_url → URL stored in MongoDB.
+  Used in: Medical Records (lab results, X-rays), Messages (attachments).
+
+3.4  Email Notification Pipeline
+----------------------------------
+  - SendGrid is the primary transactional email provider.
+  - nodemailer is the secondary fallback (SMTP).
+  - Emails are triggered:
+      • Appointment created → confirmation to patient
+      • Appointment status changed → update to patient
+      • Prescription written → PDF-style details to patient
+      • Follow-up approved → confirmation to patient
+      • Follow-up requested → notification to doctor
+
+3.5  Scheduled Tasks (node-cron)
+----------------------------------
+  A scheduler service runs inside the Node.js process on boot.
+  Cron Job: Runs daily at 08:00 Bangladesh time.
+  Logic: Queries all appointments scheduled for tomorrow with
+         reminderSent=false, sends a reminder email to the patient,
+         and updates reminderSent=true to prevent duplicate sends.
+
+3.6  CORS Policy
+-----------------
+  Origins whitelisted:
+    - http://localhost:5173  (Vite dev server)
+    - http://localhost:3000  (alternate dev port)
+    - process.env.CLIENT_URL (Vercel production URL, set on Render)
+  Requests from any other origin are blocked with a 403-equivalent.
+
+3.7  MongoDB Data Access Pattern
+----------------------------------
+  - Prisma Client is instantiated per route file (one per router module).
+  - All queries use async/await with try/catch.
+  - ObjectId fields use @db.ObjectId in the schema.
+  - Relations are resolved using Prisma's include:{} syntax.
+  - No in-memory caching layer (Redis) is used currently.
+
+3.8  Frontend State Management
+--------------------------------
+  - No Redux / Zustand. All state is managed with React hooks.
+  - Auth state: localStorage (token + serialised user JSON).
+  - Component-level state: useState, useEffect, useRef, useCallback.
+  - Real-time messages: maintained in a local messages array updated
+    via Socket.io event listeners within useEffect.
+
+3.9  Mobile-First Responsive Design
+--------------------------------------
+  - All pages designed mobile-first (375px base).
+  - BottomNav component replaces sidebar navigation on mobile.
+  - CSS breakpoints at 600px and 900px scale up to tablet/desktop.
+  - Table overflows are horizontally scrollable; inputs are touch-sized.
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 4 — DATABASE SCHEMA (DATA MODELS)
+================================================================================
+
+Provider: MongoDB Atlas (NoSQL)
+ORM:      Prisma v6 with MongoDB adapter
+Output:   /server/generated/prisma/
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  MODEL                    FIELDS                                    │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  User                  id, fullName, email, passwordHash, phone,   │
+  │                        role (patient|doctor|admin),                 │
+  │                        specialty, dateOfBirth, bloodGroup,          │
+  │                        allergies, emergencyContact, avatarUrl,      │
+  │                        workingHours (JSON string), createdAt        │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Appointment           id, patientName, dateOfBirth, gender,        │
+  │                        contactNumber, email, requestFor,            │
+  │                        doctorOrService, appointmentDate,            │
+  │                        appointmentTime, status (pending|confirmed   │
+  │                        |completed|cancelled), notes, reminderSent,  │
+  │                        createdAt, updatedAt                         │
+  │                        → belongs to User                            │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  FollowUpRequest       id, reason, preferredDate, preferredTime,    │
+  │                        status (pending|approved|rejected),          │
+  │                        createdAt                                    │
+  │                        → belongs to Appointment, User              │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Prescription          id, medicationName, dosage, frequency,       │
+  │                        alertTimes[], startDate, endDate, active,    │
+  │                        createdAt                                    │
+  │                        → belongs to Appointment, User              │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  MedicalRecord         id, title, description, recordType           │
+  │                        (lab_result|doctor_note|xray|other),         │
+  │                        fileUrl (Cloudinary URL), createdAt          │
+  │                        → belongs to User (patient), Appointment     │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Notification          id, type, channel, subject, body, sentAt,    │
+  │                        success, errorMsg                            │
+  │                        → belongs to Appointment, User              │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Conversation          id, patientId, doctorId, updatedAt,          │
+  │                        createdAt                                    │
+  │                        → has many Messages                          │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Message               id, content, senderId, conversationId,       │
+  │                        hasAttachment, fileUrl, createdAt            │
+  │                        → belongs to Conversation (cascade delete)   │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  EmergencyRequest      id, latitude, longitude,                     │
+  │                        status (pending|RESOLVED), createdAt,        │
+  │                        userId                                       │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Referral              id, referringDocId, referredToDocId,         │
+  │                        patientId, notes, createdAt                  │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  BloodDonor            id, fullName, bloodGroup, phone, city,       │
+  │                        lastDonated, createdAt                       │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  BloodRequest          id, patientName, bloodGroup, hospital,       │
+  │                        city, phone,                                 │
+  │                        urgency (regular|urgent|emergency),          │
+  │                        status (open|closed), createdAt              │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Hospital              id, name, city, address, contactPhone,       │
+  │                        contactEmail, imageUrl, description,         │
+  │                        createdAt                                    │
+  │                        → has many HospitalService                   │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  Service               id, name, type (TEST|OPERATION),            │
+  │                        description, basePrice, createdAt            │
+  │                        → has many HospitalService                   │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │  HospitalService       id, price, available (bool)                  │
+  │  (Join Table)          → belongs to Hospital, Service               │
+  └─────────────────────────────────────────────────────────────────────┘
+
+Total Collections: 15 (3 for Medical Directory, 12 for core platform)
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 5 — INTERNAL API REFERENCE (ALL ENDPOINTS)
+================================================================================
+
+Base URL (Production): https://<render-service>.onrender.com/api
+Base URL (Local):      http://localhost:5000/api
+
+Auth header format:    Authorization: Bearer <JWT>
+Content-Type:          application/json (unless file upload: multipart/form-data)
+
+──────────────────────────────────────────────────────────────────────────────
+5.1  HEALTH CHECK
+──────────────────────────────────────────────────────────────────────────────
+  GET    /api/health
+  Auth:  None
+  Desc:  Returns { status: "ok" }. Used by Render health check pings.
+
+──────────────────────────────────────────────────────────────────────────────
+5.2  AUTH — /api/auth
+──────────────────────────────────────────────────────────────────────────────
+  POST   /api/auth/signup
+    Body: { fullName, email, password }
+    Desc: Register a new Patient account. Returns JWT + user object.
+
+  POST   /api/auth/login
+    Body: { email, password }
+    Rate: 20/15min
+    Desc: Patient login. Returns JWT + user object.
+
+  POST   /api/auth/doctor/login
+    Body: { email, password }
+    Rate: 20/15min
+    Desc: Doctor login. Returns JWT + doctor object.
+
+  POST   /api/auth/doctor/signup
+    Body: { fullName, email, password }
+    Auth: Admin JWT required
+    Desc: Admin creates a new Doctor account.
+
+  POST   /api/auth/admin/login
+    Body: { email, password }
+    Rate: 20/15min
+    Desc: Admin login using hardcoded credentials from env.
+
+──────────────────────────────────────────────────────────────────────────────
+5.3  APPOINTMENTS — /api/appointments
+──────────────────────────────────────────────────────────────────────────────
+  POST   /api/appointments
+    Auth: Patient JWT
+    Body: { patientName, dateOfBirth, gender, contactNumber, email,
+            requestFor, doctorOrService, appointmentDate, appointmentTime }
+    Desc: Create a new appointment. Auto-sends confirmation email.
+
+  GET    /api/appointments
+    Auth: Patient JWT
+    Desc: Get all appointments for the logged-in patient.
+
+  GET    /api/appointments/doctor
+    Auth: Doctor JWT
+    Query: ?status=pending|confirmed|completed|cancelled
+    Desc: Get all appointments assigned to the logged-in doctor.
+
+  PATCH  /api/appointments/:id/status
+    Auth: Doctor JWT
+    Body: { status, notes }
+    Desc: Doctor updates appointment status. Triggers notification email.
+
+  DELETE /api/appointments/:id
+    Auth: Patient JWT
+    Desc: Patient cancels their own appointment (status !== completed).
+
+  GET    /api/appointments/:id
+    Auth: Patient or Doctor JWT
+    Desc: Fetch a single appointment's full details.
+
+──────────────────────────────────────────────────────────────────────────────
+5.4  PROFILE — /api/profile
+──────────────────────────────────────────────────────────────────────────────
+  GET    /api/profile/me
+    Auth: Any JWT
+    Desc: Get own profile information.
+
+  PATCH  /api/profile/me
+    Auth: Patient JWT
+    Body: { phone, dateOfBirth, bloodGroup, allergies, emergencyContact }
+    Desc: Patient updates their health profile fields.
+
+  PATCH  /api/profile/doctor/me
+    Auth: Doctor JWT
+    Body: { specialty, phone, workingHours (JSON), avatarUrl }
+    Desc: Doctor updates their clinical profile and schedule.
+
+  GET    /api/profile/patients/:id
+    Auth: Doctor JWT
+    Desc: Doctor retrieves a specific patient's profile. Link validation enforced.
+
+  GET    /api/profile/admin/stats
+    Auth: Admin JWT
+    Desc: Returns platform-wide stats:
+          { patients, doctors, appointments, emergencies, bloodDonors,
+            bloodRequests } + last 10 registeredPatients array.
+
+──────────────────────────────────────────────────────────────────────────────
+5.5  DOCTORS — /api/doctors
+──────────────────────────────────────────────────────────────────────────────
+  GET    /api/doctors
+    Auth: None (public)
+    Query: ?search=<name>
+    Desc: Returns list of all doctors. Supports name search for appointment
+          booking autocomplete.
+
+──────────────────────────────────────────────────────────────────────────────
+5.6  PRESCRIPTIONS — /api/prescriptions
+──────────────────────────────────────────────────────────────────────────────
+  POST   /api/prescriptions
+    Auth: Doctor JWT
+    Body: { appointmentId, medicationName, dosage, frequency,
+            startDate, endDate }
+    Desc: Doctor writes a prescription tied to an appointment.
+          Sends prescription details email to patient.
+
+  GET    /api/prescriptions
+    Auth: Patient JWT
+    Desc: Patient views all their prescriptions.
+
+  GET    /api/prescriptions/doctor
+    Auth: Doctor JWT
+    Desc: Doctor views all prescriptions they have written.
+
+──────────────────────────────────────────────────────────────────────────────
+5.7  MEDICAL RECORDS — /api/records
+──────────────────────────────────────────────────────────────────────────────
+  GET    /api/records
+    Auth: Patient JWT
+    Desc: Patient retrieves their full medical records history.
+
+  GET    /api/records/patient/:id
+    Auth: Doctor JWT
+    Desc: Doctor accesses a patient's records. Requires prior appointment
+          link validation — access denied if no appointment relationship.
+
+  POST   /api/records
+    Auth: Doctor JWT
+    Body: multipart/form-data { title, description, recordType, appointmentId, file? }
+    Desc: Doctor uploads a medical record (optionally with file to Cloudinary).
+
+──────────────────────────────────────────────────────────────────────────────
+5.8  MESSAGES — /api/messages
+──────────────────────────────────────────────────────────────────────────────
+  GET    /api/messages/conversations
+    Auth: Doctor or Patient JWT
+    Desc: List all conversations, enriched with the other user's display name.
+
+  GET    /api/messages/conversations/:id
+    Auth: Doctor or Patient JWT
+    Desc: Get the full message history of a specific conversation.
+
+  POST   /api/messages/conversations
+    Auth: Patient JWT
+    Body: { doctorId }
+    Desc: Create a new conversation thread between patient and doctor.
+
+  POST   /api/messages/:conversationId
+    Auth: Any JWT
+    Body: multipart/form-data { content, file? }
+    Desc: Send a message (with optional file attachment to Cloudinary).
+          Also emits real-time 'receive_message' Socket.io event to receiver.
+
+──────────────────────────────────────────────────────────────────────────────
+5.9  EMERGENCY SOS — /api/emergency
+──────────────────────────────────────────────────────────────────────────────
+  POST   /api/emergency
+    Auth: Patient JWT
+    Body: { latitude, longitude }
+    Desc: Patient dispatches an SOS signal. GPS coords stored in DB.
+
+  GET    /api/emergency/active
+    Auth: Doctor or Admin JWT
+    Desc: Returns all EmergencyRequests with status="pending".
+          Polled every 10 seconds by AdminDashboard.
+
+  POST   /api/emergency/:id/resolve
+    Auth: Admin JWT
+    Desc: Admin acknowledges and permanently resolves an SOS signal.
+          Sets status="RESOLVED". Signal disappears from active map.
+
+──────────────────────────────────────────────────────────────────────────────
+5.10  FOLLOW-UPS — /api/follow-ups
+──────────────────────────────────────────────────────────────────────────────
+  POST   /api/follow-ups
+    Auth: Patient JWT
+    Body: { appointmentId, reason, preferredDate, preferredTime }
+    Desc: Patient requests a follow-up on a past appointment.
+          Sends notification email to the relevant doctor.
+
+  GET    /api/follow-ups
+    Auth: Patient or Doctor JWT
+    Desc: Patients see their own follow-up requests.
+          Doctors see follow-up requests for appointments they own.
+
+  PATCH  /api/follow-ups/:id
+    Auth: Doctor JWT
+    Body: { status: "approved" | "rejected" }
+    Desc: Doctor approves or rejects a follow-up request.
+          Sends email to patient upon approval.
+
+──────────────────────────────────────────────────────────────────────────────
+5.11  REFERRALS — /api/referrals
+──────────────────────────────────────────────────────────────────────────────
+  POST   /api/referrals
+    Auth: Doctor JWT
+    Body: { referredToDocId, patientId, notes }
+    Desc: Doctor refers a patient to another specialist on the platform.
+          Target doctor must exist and have role="doctor".
+
+  GET    /api/referrals
+    Auth: Doctor or Patient JWT
+    Desc: Doctors see referrals they've sent.
+          Patients see referrals written about them.
+          Response enriched with doctor and patient name objects.
+
+──────────────────────────────────────────────────────────────────────────────
+5.12  BLOOD BANK — /api/blood
+──────────────────────────────────────────────────────────────────────────────
+  GET    /api/blood/donors
+    Auth: None (public)
+    Query: ?bloodGroup=A+&city=Dhaka
+    Desc: Search for blood donors by blood group and city.
+
+  POST   /api/blood/donors
+    Auth: Patient JWT
+    Body: { fullName, bloodGroup, phone, city, lastDonated }
+    Desc: Register the logged-in patient as a blood donor.
+
+  GET    /api/blood/requests
+    Auth: None (public)
+    Desc: View all open blood requests sorted by urgency.
+
+  POST   /api/blood/requests
+    Auth: Patient JWT
+    Body: { patientName, bloodGroup, hospital, city, phone, urgency }
+    Desc: Submit a blood request (regular, urgent, or emergency).
+
+──────────────────────────────────────────────────────────────────────────────
+5.13  AI SYMPTOM CHECKER — /api/ai
+──────────────────────────────────────────────────────────────────────────────
+  POST   /api/ai/symptoms
+    Auth: Patient JWT
+    Rate: 15/1min
+    Body: { messages: [{ role: "user"|"assistant", content: string }] }
+    Desc: Forward multi-turn conversation history to Groq API.
+          Model: llama-3.1-8b-instant. Temperature: 0.5. MaxTokens: 1024.
+          System prompt restricts AI to symptom triage only — no diagnosis.
+          Returns AI response text.
+
+──────────────────────────────────────────────────────────────────────────────
+5.14  DIRECTORY — /api/directory
+──────────────────────────────────────────────────────────────────────────────
+  GET    /api/directory/hospitals
+    Auth: None (public)
+    Query: ?city=Dhaka&search=Square
+    Desc: Returns all hospitals with their associated services, alphabetically
+          sorted. Supports city filtering and name search.
+
+  GET    /api/directory/hospitals/:id
+    Auth: None (public)
+    Desc: Returns a single hospital's full profile including all associated
+          HospitalService + Service records, sorted alphabetically by service name.
+
+  GET    /api/directory/services
+    Auth: None (public)
+    Query: ?type=TEST|OPERATION&search=MRI&city=Dhaka
+    Desc: Returns all services of a given type. If city is given, the nested
+          hospitalServices array is filtered to hospitals in that city only.
+
+──────────────────────────────────────────────────────────────────────────────
+TOTAL API ENDPOINTS: 34 endpoints across 13 route modules
+──────────────────────────────────────────────────────────────────────────────
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 6 — EXTERNAL APIS & THIRD-PARTY SERVICES
+================================================================================
+
+  ┌───────────────────┬────────────────────────────────────────────────────┐
+  │  Service          │  Purpose & Integration Details                      │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  Groq API         │  AI symptom checker LLM backend.                   │
+  │  (groq-sdk v1)    │  Model: llama-3.1-8b-instant.                      │
+  │                   │  Activated by GROQ_API_KEY env variable.            │
+  │                   │  Used in: /api/ai/symptoms                          │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  SendGrid         │  Transactional email delivery.                      │
+  │  (@sendgrid/mail) │  Used for: appointment confirmations, prescription  │
+  │                   │  emails, follow-up notifications, daily reminders.  │
+  │                   │  Activated by SENDGRID_API_KEY env variable.        │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  Cloudinary       │  Media storage and delivery CDN.                   │
+  │  (cloudinary v2)  │  Used for: medical record file uploads, message    │
+  │                   │  attachment uploads.                                │
+  │                   │  Activated by CLOUDINARY_URL or individual keys.    │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  OpenStreetMap    │  Free tile server for interactive maps.             │
+  │  (via Leaflet)    │  Used in: Blood Bank donor map (react-leaflet),    │
+  │                   │  Admin Emergency SOS dispatch map.                  │
+  │                   │  No API key required. Attribution required.         │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  MongoDB Atlas    │  Cloud-hosted NoSQL database.                      │
+  │                   │  Connected via DATABASE_URL env variable.           │
+  │                   │  Prisma v6 handles all ORM operations.              │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  Vercel           │  Frontend hosting (React SPA).                     │
+  │                   │  Auto-deploys on push to main branch.               │
+  │                   │  CDN-distributed globally.                          │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  Render           │  Backend hosting (Node.js).                        │
+  │                   │  Persistent web service, no cold-start issue.      │
+  │                   │  Environment variables set in Render dashboard.     │
+  ├───────────────────┼────────────────────────────────────────────────────┤
+  │  Browser          │  Navigator.geolocation API for SOS dispatch.       │
+  │  Geolocation API  │  Native browser API — no external service needed.  │
+  └───────────────────┴────────────────────────────────────────────────────┘
+
+  Required Environment Variables (Server):
+  ─────────────────────────────────────────
+    DATABASE_URL          MongoDB Atlas connection string
+    JWT_SECRET            Secret key for JWT signing
+    GROQ_API_KEY          Groq Cloud API key
+    SENDGRID_API_KEY      SendGrid API key
+    CLOUDINARY_URL        Cloudinary connection URL
+    CLIENT_URL            Vercel frontend URL (for CORS)
+    ADMIN_EMAIL           Hardcoded admin email
+    ADMIN_PASSWORD        Hardcoded admin password
+    PORT                  Server port (default 5000)
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 7 — REAL-TIME INFRASTRUCTURE (SOCKET.IO)
+================================================================================
+
+  The server creates an HTTP server from Express, then attaches Socket.io v4.
+  Both REST API and WebSocket connections share the same port.
+
+  Authentication
+  ──────────────
+  Every socket connection must provide a valid JWT in handshake.auth.token.
+  The JWT is decoded and verified server-side. Invalid tokens are rejected
+  before any events can fire. Authenticated users automatically join a
+  private socket room keyed by their userId.
+
+  Events Implemented
+  ───────────────────
+  Client → Server:
+    send_message     { receiverId, messageData }
+                     Server relays messageData to the target user's room.
+
+    call_user        { userToCall, signalData, from, name }
+                     Server forwards a WebRTC SDP offer to target user.
+
+    answer_call      { to, signal }
+                     Server forwards a WebRTC SDP answer to the caller.
+
+    ice_candidate    { to, candidate }
+                     Server forwards an ICE candidate for WebRTC negotiation.
+
+  Server → Client:
+    receive_message  messageData
+                     Emitted to the recipient's room when a message is sent.
+
+    call_user        { signal, from, name }
+                     Emitted to the callee when an inbound call arrives.
+
+    call_accepted    signal
+                     Emitted to the caller when the callee answers.
+
+    ice_candidate    candidate
+                     Emitted to both sides during WebRTC negotiation.
+
+  Telemedicine Call Flow
+  ───────────────────────
+  1. Caller emits 'call_user' with their WebRTC SDP offer.
+  2. Server relays it to the callee's socket room.
+  3. Callee accepts → emits 'answer_call' with SDP answer.
+  4. Server relays answer back to caller.
+  5. Both sides exchange ICE candidates via 'ice_candidate' events.
+  6. WebRTC peer-to-peer connection established → HD audio/video.
+
+  Real-Time Messaging Flow
+  ─────────────────────────
+  1. Sender POSTs message to /api/messages/:conversationId (REST).
+  2. Server saves message to MongoDB.
+  3. Server also emits 'receive_message' to the recipient's socket room.
+  4. Recipient's client receives the event and prepends message to UI.
+     → Message appears instantly without any page refresh.
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 8 — FEATURE SET SEPARATED BY ROLE
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+8a. PATIENT FEATURES
+────────────────────────────────────────────────────────────────────────────────
+
+  ACCOUNT & PROFILE
+  ─────────────────
+  • Register a new patient account (email + password).
+  • Log in with email and password; JWT stored in browser.
+  • Edit personal health profile: phone, date of birth, blood group,
+    allergies, emergency contact.
+  • Upload or update avatar photo.
+  • View own profile at /profile.
+
+  DASHBOARD (/dashboard)
+  ──────────────────────
+  • Greeting message personalised by time of day (Good morning/afternoon/evening).
+  • Quick stats: total appointments, medical records, prescriptions.
+  • Six action cards linking to all key features.
+  • Language toggle (English / Bengali / Arabic) via i18next.
+  • One-tap SOS Emergency dispatch button.
+  • Integrated AI Symptom Checker chat modal (Groq LLaMA 3.1).
+
+  APPOINTMENT BOOKING (/appointments)
+  ─────────────────────────────────────
+  • Multi-step form (Step 1: Personal info, Step 2: Appointment details).
+  • Live doctor search with debounced autocomplete (300ms delay).
+  • Keyboard-navigable dropdown (ArrowUp, ArrowDown, Enter, Escape).
+  • Doctor's weekly working hours displayed after selection so patient
+    can pick an appropriate time slot.
+  • Automatic pre-fill of hospital name when arriving from Hospital Profile page
+    via URL query parameter (?hospital=<name>).
+  • Confirmation email sent to patient's email on submit.
+
+  CONSULTATION HISTORY (/consultation-history)
+  ──────────────────────────────────────────────
+  • View all past and upcoming appointments in a paginated table.
+  • Filter appointments by status (pending, confirmed, completed, cancelled).
+  • Request a follow-up on any completed appointment.
+  • See doctor notes attached to confirmed appointments.
+  • Download/view prescriptions tied to each appointment.
+
+  MEDICAL RECORDS (/records)
+  ────────────────────────────
+  • View full Electronic Health Record (EHR) history.
+  • Records are tagged by type: lab_result, doctor_note, xray, other.
+  • Each record links back to the associated appointment.
+  • Files (X-rays, lab PDFs) are stored on Cloudinary and viewable in-browser.
+  • Records are sorted chronologically (newest first).
+
+  REAL-TIME MESSAGING (/messages)
+  ─────────────────────────────────
+  • See a list of all conversations with doctors.
+  • Send and receive text messages in real time (Socket.io).
+  • Attach and upload files within the chat (images, PDFs).
+  • Conversations auto-scroll to the latest message.
+  • Timestamps displayed on each message.
+
+  AI SYMPTOM CHECKER
+  ───────────────────
+  • Chat interface accessible from the Dashboard (modal overlay).
+  • Multi-turn conversation with LLaMA 3.1 (Groq-accelerated).
+  • AI never diagnoses — only recommends specialist type.
+  • If symptoms are severe, AI instructs user to use SOS.
+  • Chat history persists during the session.
+
+  SOS EMERGENCY
+  ──────────────
+  • Single tap on the SOS button in Dashboard.
+  • Browser Geolocation API requests GPS coordinates.
+  • Coordinates sent to /api/emergency.
+  • Real-time status feedback: "Locating… → Dispatching → Done."
+
+  BLOOD BANK (/blood-bank)
+  ──────────────────────────
+  • Interactive map powered by OpenStreetMap + React-Leaflet.
+  • View all registered blood donors plotted as map markers.
+  • Filter donors by blood group (A+, A-, B+, B-, AB+, AB-, O+, O-).
+  • Filter donors by city.
+  • Register as a blood donor with form.
+  • Submit an urgent/emergency blood request.
+  • View list of all open blood requests with urgency indicators.
+
+  MEDICAL DIRECTORY (/discovery)
+  ────────────────────────────────
+  • Discovery Hub: 6-category navigation grid linking to all sections.
+  • Hospitals Directory: Browse 18+ major Bangladeshi hospitals.
+    - Filter by Bangladesh Division (Dhaka, Chittagong, Sylhet, etc.).
+    - Search by hospital name.
+    - Tap card → full Hospital Profile page.
+  • Hospital Profile Page:
+    - Hospital name, address, phone, description.
+    - Diagnostic Tests section (alphabetically sorted).
+    - Surgical Operations section (alphabetically sorted).
+    - Exact ৳ pricing per service.
+    - "Book Consultation Here" button → pre-fills Appointment booking.
+  • Diagnostic Tests Directory:
+    - All tests sorted alphabetically (default).
+    - Sort options: Name A→Z, Name Z→A, Price Low→High, Price High→Low,
+      Most Available.
+    - Expand each test card → see all hospitals offering it, sorted by price.
+    - Hospital names are hyperlinks to the Hospital Profile.
+    - Filter by city.
+  • Surgical Operations Directory:
+    - Same functionality as Tests, filtered to OPERATION type.
+
+────────────────────────────────────────────────────────────────────────────────
+8b. DOCTOR FEATURES
+────────────────────────────────────────────────────────────────────────────────
+
+  ACCOUNT
+  ────────
+  • Doctors cannot self-register; accounts are created by Admin only.
+  • Log in at /doctor (separate login page).
+  • JWT stored in browser as medilink_doctor_token.
+
+  DOCTOR DASHBOARD (/doctor-dashboard) — 5 TABS
+  ───────────────────────────────────────────────
+
+  TAB 1: Appointments
+    • View all incoming appointment requests in a responsive table.
+    • Filter by status: All, Pending, Confirmed, Completed, Cancelled.
+    • Accept or Decline individual appointments with one click.
+    • Add clinical notes to any appointment.
+    • Status badge system (colour-coded: yellow=pending, green=confirmed, etc.).
+    • Appointment count shown in the tab badge.
+
+  TAB 2: Patient Records
+    • Search for any patient by name.
+    • Only patients with a prior appointment link are accessible.
+    • View a patient's full medical record history.
+    • Upload new medical records (lab results, X-rays, doctor notes)
+      with Cloudinary file attachment.
+    • Write prescriptions tied to appointments.
+
+  TAB 3: Prescriptions
+    • View all prescriptions written by this doctor.
+    • Each prescription shows: medication name, dosage, frequency,
+      start/end dates, and active status.
+
+  TAB 4: Messages
+    • Full real-time messaging interface (same as patient-facing).
+    • List of all patient conversations.
+    • Send and receive text + file attachments in real time.
+
+  TAB 5: Availability / Working Hours
+    • Set working hours for each day of the week (Monday → Sunday).
+    • Configure start time and end time per day.
+    • Toggle individual days as "Off" (day off indicator).
+    • Save schedule persistently to MongoDB via PATCH /api/profile/doctor/me.
+    • Patients see this schedule when selecting this doctor to book.
+
+  CLINICAL TOOLS
+  ───────────────
+  • Write Prescription: tied to appointment, sends email to patient.
+  • Create Patient Referral: refer a patient to another verified doctor
+    on the platform with clinical notes.
+  • Approve / Reject Follow-Up Requests from patients.
+    - Approval triggers automated email notification to patient.
+  • View referrals sent by this doctor.
+
+  PROFILE
+  ────────
+  • Update specialty (e.g., Cardiologist, Dermatologist).
+  • Update phone number and contact info.
+  • Upload avatar.
+
+────────────────────────────────────────────────────────────────────────────────
+8c. ADMIN FEATURES
+────────────────────────────────────────────────────────────────────────────────
+
+  ACCOUNT
+  ────────
+  • Single admin account; credentials stored as environment variables.
+  • Login at /admin (separate admin login page).
+  • JWT stored as medilink_admin_token.
+
+  ADMIN COMMAND CENTER (/admin-dashboard)
+  ─────────────────────────────────────────
+
+  ANALYTICS GRID
+  • 6 real-time stat cards (auto-fetched from /api/profile/admin/stats):
+      - Total Patients (count)
+      - Total Doctors (count)
+      - Total Appointments (count)
+      - SOS Dispatches (count)
+      - Registered Blood Donors (count)
+      - Open Blood Requests (count)
+  • Stat cards are colour-coded and icon-tagged.
+
+  LIVE EMERGENCY MAP
+  • OpenStreetMap rendered with React-Leaflet centred on Dhaka.
+  • All pending SOS EmergencyRequests plotted as pulsing 🚨 markers.
+  • Clicking a marker shows a Leaflet Popup with timestamp.
+  • Map auto-refreshes every 10 seconds by polling /api/emergency/active.
+
+  SOS ACKNOWLEDGEMENT LIST (below the map)
+  • Each pending SOS displayed as an individual row under the map.
+  • Shows: "Patient SOS", GPS coordinates, time received.
+  • "✓ Acknowledge & Resolve" green button.
+  • On click: calls POST /api/emergency/:id/resolve → sets status=RESOLVED.
+  • Signal immediately disappears from both map and list.
+
+  DOCTOR MANAGEMENT
+  • "Add New Doctor" button toggles a registration form.
+  • Form fields: Full Name, Email, Initial Password.
+  • Submits to POST /api/auth/doctor/signup (admin-authenticated).
+  • On success: doctor account is created and can immediately log in.
+  • Stats grid refreshes automatically after adding a doctor.
+
+  PERSONNEL ROSTERS
+  • Recent Patients Table: scrollable table of last 10 registered patients
+    showing Name, Email, Join Date.
+  • Active Doctors Table: full list of all verified doctors on the platform
+    with name and status badge.
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 9 — USER MANUAL
+================================================================================
+
+──────────────────────────────────────────────────
+MANUAL A: PATIENT
+──────────────────────────────────────────────────
+
+Step 1 — Create an Account
+  Navigate to the website landing page.
+  Click "Create Patient Account" or "Get Started."
+  Fill in: Full Name, Email Address, Password.
+  Click "Register." You will be redirected to your patient dashboard.
+
+Step 2 — Complete Your Health Profile
+  Tap the profile icon (top right) or navigate to /profile.
+  Enter your: Date of Birth, Blood Group, Allergies, Emergency Contact, Phone.
+  Save changes. This information is used to pre-fill medical record fields.
+
+Step 3 — Browse the Medical Directory
+  From the dashboard, tap "Directory."
+  Choose from: Hospitals & Clinics, Diagnostic Tests, Surgical Operations,
+               Blood Bank, Find a Specialist, Chat with Doctor.
+  For Hospitals: tap any card → view full profile and services with prices.
+
+Step 4 — Book an Appointment
+  Navigate to "Book" (bottom nav) or tap "Find a Specialist."
+  Step 1 of the form: enter your full name, DOB, gender, contact, and email.
+  Step 2: select request type, type a doctor name in the search field
+          (autocomplete will suggest verified platform doctors),
+          choose date and time.
+  Click "Book Appointment." Confirmation email sent to your inbox.
+
+Step 5 — Track Appointments
+  Navigate to "History" (bottom nav) or /consultation-history.
+  Filter by status if needed.
+  You can request a follow-up on any completed appointment.
+
+Step 6 — View Prescriptions and Records
+  Navigate to "Records" (top nav).
+  You will see all prescriptions your doctor has issued, plus
+  all medical records (X-rays, lab results, notes) uploaded by doctors.
+  Files can be opened in your browser.
+
+Step 7 — Chat with Your Doctor
+  Navigate to "Messages" (bottom nav).
+  Select your doctor's conversation or start a new one.
+  Type your message and press Send. Messages appear in real time.
+  Tap the 📎 attachment icon to send a file or photo.
+
+Step 8 — Use the AI Symptom Checker
+  From your Dashboard, tap the "AI Symptom Checker" floating button.
+  The chat modal opens.
+  Describe your symptoms in plain English.
+  The AI will respond with guidance on which specialist to consult.
+  If symptoms are severe, it will tell you to use SOS immediately.
+
+Step 9 — Dispatch SOS Emergency
+  On the Dashboard, tap the large red "SOS Emergency" button.
+  Allow browser location access when prompted.
+  Your GPS coordinates are sent to the Admin dispatch center.
+  Wait for confirmation text on-screen.
+
+Step 10 — Blood Bank
+  Navigate to /blood-bank.
+  View registered donors on the live map.
+  Filter by blood group and city to find compatible donors.
+  Tap "Register as Donor" to add yourself to the network.
+  Tap "Submit Blood Request" if you urgently need blood.
+
+──────────────────────────────────────────────────
+MANUAL B: DOCTOR
+──────────────────────────────────────────────────
+
+Step 1 — Log In
+  Navigate to /doctor.
+  Enter your email and password (provided by Admin).
+
+Step 2 — Review Appointments
+  You land on the Doctor Dashboard, Appointments tab.
+  Pending appointments appear at the top.
+  Click the green ✔ (Accept) to confirm or the red ✖ (Decline) to reject.
+  Add clinical notes in the notes field before confirming.
+
+Step 3 — Access Patient Records
+  Open the "Patient Records" tab.
+  Search for a patient name.
+  Select the patient to see their full medical history.
+  To upload a new record: select the patient → click "Upload Record"
+  → fill in title, type, description, and attach a file.
+
+Step 4 — Write a Prescription
+  Open the "Prescriptions" tab.
+  Select the appointment to tie the prescription to.
+  Enter: medication name, dosage, frequency, start date (end date optional).
+  Submit. An automated email is sent to the patient with the prescription.
+
+Step 5 — Set Your Working Hours
+  Open the "Availability" tab.
+  For each day (Monday–Sunday): enter start and end times or tick "Off."
+  Click "Save Schedule."
+  Patients will see these hours in the doctor autocomplete during booking.
+
+Step 6 — Messaging Patients
+  Open the "Messages" tab.
+  See all patient conversations listed on the left panel.
+  Click a conversation to open it.
+  Type and send messages in real time. Upload attachments as needed.
+
+Step 7 — Refer a Patient
+  In the Patient Records tab, open the patient's profile.
+  Click "Refer to Specialist."
+  Search for the target doctor by name.
+  Add clinical notes explaining the reason for referral.
+  Submit. A referral record is created and visible to the patient.
+
+──────────────────────────────────────────────────
+MANUAL C: ADMIN
+──────────────────────────────────────────────────
+
+Step 1 — Log In
+  Navigate to /admin.
+  Enter admin credentials (set in server environment).
+
+Step 2 — Monitor Platform Stats
+  The 6 analytic cards at the top of the Admin Dashboard
+  show live counts of all key entities on the platform.
+
+Step 3 — Monitor & Resolve SOS Emergencies
+  Scroll down to the Emergency Map section.
+  Active emergencies appear as pulsing 🚨 markers on the map.
+  Below the map, each emergency is listed with GPS coordinates and time.
+  Press "✓ Acknowledge & Resolve" on the relevant row.
+  The signal is resolved in the database and removed from the map.
+
+Step 4 — Add a Doctor
+  Click "Add New Doctor" (top right of the Admin dashboard).
+  Enter: Full Name, Email, Initial Password.
+  Submit. The doctor can immediately log in at /doctor.
+
+Step 5 — View Platform Rosters
+  Scroll below the stats to see:
+  - Recent Patients table (last 10 registrations).
+  - Active Doctors table (full verified staff roster).
+
+--------------------------------------------------------------------------------
+
+================================================================================
+  SECTION 10 — FULL WALKTHROUGH
+================================================================================
+
+This is an end-to-end narrative walkthrough of every feature in the system,
+following the realistic user journey from discovery to post-consultation.
+
+──────────────────────────────────────────────────────────────────────────────
+10.1  Landing Page: First Impression
+──────────────────────────────────────────────────────────────────────────────
+  A user arrives at the root URL (/). They see a full-screen dark hero section.
+  The top navigation bar has: ⚕️ MediLink logo, links (Directory, How It Works,
+  For Doctors), Sign In and Get Started buttons.
+  
+  The hero section has:
+    Left Column — Large headline: "Healthcare That Comes To You" with an
+    animated gradient text "To You". Below it, a description paragraph,
+    two CTA buttons ("Create Patient Account →", "🔍 Browse Directory"),
+    and a subtle badge: "🚀 Next-Gen Medical Ecosystem."
+
+    Right Column — A structured grid of 3 frosted-glass cards:
+      Primary card: Dr. Rahim Is Online (live pulsing dot, "Join →" button).
+      Secondary row: "Llama 3.1 AI — Symptom checker active" (Online badge) |
+                     "SOS Dispatch — Ambulance 3 mins away" (Active badge).
+      Stats strip: 50+ Hospitals | 12K Patients | 24/7 SOS.
+
+  Below the hero is a stats band with 4 large gradient numbers:
+  50+ Hospitals Linked, 12K Patients Served, 24/7 SOS Dispatch, 99% Uptime.
+
+  Features Grid: 4 cards with glassmorphism backgrounds:
+    Hospital Directory, AI Symptom AI, Telemedicine Suite, Live SOS Dispatch.
+    Each card has a coloured icon, heading, and description.
+    On hover, cards lift 8px with a border glow.
+
+  How It Works Section (3 steps):
+    Step 1 — Discovery (📱 icon): Find the perfect care via the Directory.
+    Step 2 — Auto Booking (📅 icon): Lock in appointment automatically.
+    Step 3 — Unified Health Record (🏥 icon): Doctor uploads your records.
+    Each step is a wide card with a square emoji-icon on one side and
+    content (badge, heading, paragraph, optional CTA button) on the other.
+    Odd steps have icon on the left; even steps have icon on the right.
+
+  CTA Banner: "Ready to upgrade your healthcare?" with subtitle and a large
+  "Create Free Account" button in a gradient border-rounded box.
+
+  Footer: ⚕️ MediLink logo with links to Admin Gateway, Privacy Policy,
+  Terms of Service. Copyright text.
+
+──────────────────────────────────────────────────────────────────────────────
+10.2  Patient Signup & Login
+──────────────────────────────────────────────────────────────────────────────
+  User clicks "Get Started" → /signup.
+  Form: Full Name, Email, Password. Submit sends POST /api/auth/signup.
+  On success: JWT stored in localStorage as medilink_token + medilink_user.
+  User redirected to /dashboard.
+
+  If returning: /login. POST /api/auth/login. Same JWT storage.
+
+──────────────────────────────────────────────────────────────────────────────
+10.3  Patient Dashboard
+──────────────────────────────────────────────────────────────────────────────
+  Greeting banner: "Good morning, [Name] 👋" (dynamically picks morning/
+  afternoon/evening based on current hour).
+
+  Summary cards row: Appointments: N | Records: N | Prescriptions: N.
+  (Appointment count fetched from GET /api/appointments on load.)
+
+  Six action cards in a 2×3 grid:
+    📅 Book Appointment → /appointments
+    📁 Medical Records → /records
+    💊 Prescriptions → included in records page
+    💬 Messages → /messages
+    🩸 Blood Bank → /blood-bank
+    🔍 Medical Directory → /discovery
+
+  SOS Emergency button: large red pulsing button at the bottom of dashboard.
+  Click → browser requests GPS → sends POST /api/emergency → status text.
+
+  AI Symptom Checker: floating "🤖 Symptom Checker" button opens a chat modal.
+  The modal has a conversation interface with preset opening message from AI.
+  User types symptoms → POST /api/ai/symptoms → AI response shown as bubble.
+  Uses multi-turn conversation history accumulated in state array.
+
+  Language Toggle: 3 flags (EN / BN / AR) in the top right. Uses i18next
+  to switch interface language and stores preference in localStorage.
+
+  Bottom Navigation Bar (mobile-first):
+    Home → /dashboard
+    Directory → /discovery
+    Book → /appointments
+    History → /consultation-history
+    Records → /records
+
+──────────────────────────────────────────────────────────────────────────────
+10.4  Medical Directory — Hub
+──────────────────────────────────────────────────────────────────────────────
+  /discovery shows the Discovery Hub.
+  A Bangladesh Medical Directory title with a description.
+  6 richly coloured cards in a responsive grid (1 col → 2 → 3):
+    🏥 Hospitals & Clinics (blue border, blue badge "Browse")
+    🔬 Diagnostic Tests (green border, green badge "Tests")
+    ⚕️ Surgical Operations (red border, red badge "Surgery")
+    🩸 Blood Bank (rose border, rose badge "Urgent")
+    👨‍⚕️ Find a Specialist (purple border, purple badge "Book")
+    💬 Chat with Your Doctor (blue border, blue badge "Secure")
+
+  Below: a Pro Tip alert box explaining that tapping a Hospital card shows
+  its full profile page with all services.
+
+──────────────────────────────────────────────────────────────────────────────
+10.5  Hospitals Directory
+──────────────────────────────────────────────────────────────────────────────
+  /discovery/hospitals fetches GET /api/directory/hospitals on load.
+  Shows a search bar (debounced 300ms) and a Division dropdown
+  (Dhaka, Chittagong, Sylhet, Rajshahi, Khulna, Barishal, Rangpur, Mymensingh).
+  
+  Results render as clickable cards stacked vertically.
+  Each card shows: hospital name, city, phone, service count badge,
+  description, and a "View Profile & Services →" CTA.
+  Hovering lifts the card 2px (translateY).
+  Entire card is wrapped in a React Router <Link>, navigating to /discovery/hospitals/:id.
+
+──────────────────────────────────────────────────────────────────────────────
+10.6  Hospital Profile Page
+──────────────────────────────────────────────────────────────────────────────
+  /discovery/hospitals/:id fetches GET /api/directory/hospitals/:id.
+  
+  Hero block: 🏥 emoji, hospital name (H1), address and phone, description,
+  and a teal gradient "Book Consultation Here" button that navigates to
+  /appointments?hospital=<HospitalName>.
+
+  Below, two clearly labelled sections:
+    🔬 Diagnostic Tests — alphabetically sorted list.
+    ⚕️ Surgical Operations — alphabetically sorted list.
+
+  Each row in both sections shows:
+    Left: service name (bold) + description (muted small text).
+    Right: ৳ price in a teal pill badge.
+
+  "← Back to Hospitals" link returns to /discovery/hospitals.
+
+──────────────────────────────────────────────────────────────────────────────
+10.7  Services Directories (Tests & Operations)
+──────────────────────────────────────────────────────────────────────────────
+  /discovery/services?type=TEST (or OPERATION).
+  3-control toolbar: search input, city dropdown, sort dropdown.
+  Sort options: Name A→Z, Name Z→A, Price Low→High, Price High→Low, Most Available.
+  Results count shown: "X diagnostic tests found."
+
+  Each service renders as a card with:
+    Left: service name, description.
+    Right: "From ৳X,XXX" price badge + "N Hospitals" badge.
+    Expand toggle: "▼ Show available hospitals & prices"
+    On expand: sorted-by-price list of hospitals offering this service,
+               each row clickable, navigating to the Hospital Profile.
+               Hospital name shown in primary colour (hyperlink style).
+
+──────────────────────────────────────────────────────────────────────────────
+10.8  Appointment Booking
+──────────────────────────────────────────────────────────────────────────────
+  /appointments. Two-step form.
+
+  Step 1 (Personal Info):
+    Patient Name, Date of Birth, Gender (dropdown), Contact Number, Email.
+    "Next →" validates all fields, moves to Step 2.
+
+  Step 2 (Appointment Details):
+    Request For (dropdown: General Consultation, Hospital Inquiry, etc.).
+    Doctor/Hospital search input — live autocomplete from GET /api/doctors.
+    When a doctor is selected from the dropdown:
+      Their working hours are parsed from JSON and displayed below the field
+      showing each day's open times (e.g., "Monday: 09:00 – 17:00").
+    Appointment Date and Time pickers.
+    "Book Appointment" submits → POST /api/appointments.
+    Success: green confirmation card displayed.
+    Failure: error message in red alert.
+
+  If arriving from Hospital Profile: ?hospital=Square Hospital
+    → doctorOrService pre-filled, requestFor set to "Hospital Inquiry."
+
+──────────────────────────────────────────────────────────────────────────────
+10.9  Consultation History
+──────────────────────────────────────────────────────────────────────────────
+  /consultation-history. Fetches GET /api/appointments.
+  Status filter tabs: All | Pending | Confirmed | Completed | Cancelled.
+  
+  Each appointment card shows:
+    Patient name, date, time, doctor name, status badge (coloured), notes.
+  
+  Actions:
+    • "Request Follow-Up" button on completed appointments.
+      → Expands an inline form: reason, preferred date+time.
+      → Submits POST /api/follow-ups.
+    • Prescriptions associated with each appointment are listed below the card.
+
+──────────────────────────────────────────────────────────────────────────────
+10.10  Medical Records
+──────────────────────────────────────────────────────────────────────────────
+  /records. Fetches GET /api/records.
+  Records sorted newest first.
+  
+  Each record card shows:
+    Title, record type (colour-labelled pill), description, associated appointment.
+    If a file URL exists: "View File" button → opens Cloudinary URL in new tab.
+
+──────────────────────────────────────────────────────────────────────────────
+10.11  Real-Time Chat
+──────────────────────────────────────────────────────────────────────────────
+  /messages. Fetches GET /api/messages/conversations.
+  
+  Layout: Left panel = conversation list. Right panel = message thread.
+  
+  Selecting a conversation:
+    Loads full message history from GET /api/messages/conversations/:id.
+    Messages rendered as chat bubbles (sent = right, received = left).
+    Timestamps on each bubble.
+    Auto-scrolls to bottom on load and new message.
+  
+  Sending a message:
+    Text input at the bottom with a Send button and a 📎 attachment icon.
+    On send: POST /api/messages/:conversationId (REST).
+    Server saves to DB and emits 'receive_message' Socket event.
+    Message appears instantly in both sender and receiver UIs.
+  
+  File attachment:
+    Click 📎 → file input modal → select file → sends multipart/form-data.
+    File uploaded to Cloudinary → fileUrl saved in Message document.
+    Recipient sees a clickable file link in the chat bubble.
+
+──────────────────────────────────────────────────────────────────────────────
+10.12  Blood Bank
+──────────────────────────────────────────────────────────────────────────────
+  /blood-bank.
+  
+  Tabs: Donors Map | Donor List | Blood Requests | Register.
+  
+  Donors Map:
+    Interactive OpenStreetMap with Leaflet markers at donor locations.
+    Clicking a marker shows donor name, blood group, phone.
+    Filter dropdowns: blood group + city → calls GET /api/blood/donors with params.
+  
+  Donor List:
+    Tabular list of same donors with contact info.
+    "Last Donated" date shown to indicate eligibility.
+  
+  Blood Requests:
+    All open blood requests with urgency colours (regular=grey, urgent=orange,
+    emergency=red). Shows hospital, city, phone, blood group needed.
+  
+  Register as Donor (form):
+    Full Name, Blood Group, Phone, City, Last Donated Date.
+    Submits POST /api/blood/donors.
+  
+  Submit Blood Request (form):
+    Patient Name, Blood Group, Hospital, City, Phone, Urgency level.
+    Submits POST /api/blood/requests.
+
+──────────────────────────────────────────────────────────────────────────────
+10.13  Doctor Login & Dashboard
+──────────────────────────────────────────────────────────────────────────────
+  Doctor navigates to /doctor → DoctorLoginPage.
+  Credentials provided by Admin. POST /api/auth/doctor/login.
+  JWT stored as medilink_doctor_token. Redirected to /doctor-dashboard.
+  
+  DoctorDashboard.jsx is the most complex page in the application.
+  5 tabs rendered in a persistent tab bar.
+
+  TAB 1 — Appointments:
+    Fetches GET /api/appointments/doctor on load and on tab switch.
+    Status filter buttons: All / Pending / Confirmed / Completed / Cancelled.
+    Each row: patient name, contact, date, time, status badge, notes preview.
+    Accept button (green) → PATCH /api/appointments/:id/status { status: "confirmed" }.
+    Decline button (red) → PATCH with { status: "cancelled" }.
+    Notes field inline → debounced PATCH to add clinical notes.
+
+  TAB 2 — Patient Records:
+    Search input for patient name → GET /api/profile/patients/:id.
+    Selected patient's full medical record list displayed below.
+    "Upload Record" section:
+      Inputs: title, type dropdown, description, appointment link (optional), file.
+      Submit → POST /api/records (multipart/form-data).
+    "Write Prescription" section:
+      Inputs: medication name, dosage, frequency, start date, end date.
+      Submit → POST /api/prescriptions.
+      Success triggers automatic email to patient.
+    "Refer Patient" section:
+      Doctor search for target specialist → POST /api/referrals.
+
+  TAB 3 — Prescriptions:
+    GET /api/prescriptions/doctor.
+    Table: medication, dosage, frequency, start/end dates, active badge.
+
+  TAB 4 — Messages:
+    Identical to patient-facing Messages page.
+    Fetches GET /api/messages/conversations.
+    Real-time Socket.io message delivery.
+
+  TAB 5 — Availability:
+    7 rows (one per day of week).
+    Each row: day name, "Off" checkbox, start time input, end time input.
+    If "Off" checked: time inputs hidden; row greyed out.
+    "Save Schedule" → PATCH /api/profile/doctor/me { workingHours: JSON }.
+    Saved JSON is shown in patients' appointment booking flow.
+
+──────────────────────────────────────────────────────────────────────────────
+10.14  Admin Login & Command Center
+──────────────────────────────────────────────────────────────────────────────
+  Admin navigates to /admin → AdminLoginPage.
+  POST /api/auth/admin/login with env-variable credentials.
+  JWT stored as medilink_admin_token. Redirected to /admin-dashboard.
+
+  Admin Dashboard layout (top to bottom):
+
+  Page Header:
+    "Admin Control Center" h1 with description.
+    "Add New Doctor" button (right-aligned). Toggling shows the doctor
+    registration form on the right side of the grid.
+
+  Analytics Grid:
+    6 stat cards fetched from GET /api/profile/admin/stats.
+    Each card: emoji icon, large number, label.
+    Cards: Total Patients (blue), Total Doctors (green), Appointments (purple),
+           SOS Dispatches (red), Blood Donors (rose), Open Blood Requests (amber).
+    Stats refresh after a new doctor is added.
+
+  Emergency SOS Map:
+    MapContainer (react-leaflet) centred on [23.8103, 90.4125] (Dhaka).
+    All pending EmergencyRequests plotted as 🚨 DivIcon markers.
+    Clicking a marker opens a Popup → "Emergency Signal / Time: HH:MM:SS /
+    Status: Awaiting Dispatch."
+    Map polls GET /api/emergency/active every 10 seconds via setInterval.
+
+  SOS Acknowledgement Rows (directly below the map):
+    Rendered only if emergencies.length > 0.
+    "Requires Immediate Dispatch:" heading in red.
+    Each SOS as a row:
+      Left: "Patient SOS" bold + GPS coordinates formatted to 4 decimal places
+            + time received.
+      Right: green "✓ Acknowledge & Resolve" button.
+      On click: POST /api/emergency/:id/resolve → signal disappears from both
+                the list and the Leaflet map on next poll.
+
+  Personnel Grid (2-column, or 1-column when doctor form is open):
+    Left column — two stacked cards:
+      Recent Patients table: columns = Patient Name | Email | Joined.
+                             Last 10 registrations from DB.
+      Active Doctors table: columns = Doctor Name | Status.
+                            Pulls from GET /api/doctors (public route).
+                            Shows active badge for all platform doctors.
+
+    Right column — Doctor Registration Form (shown only when form is open):
+      Fields: Full Name, Email, Initial Password.
+      Submit → POST /api/auth/doctor/signup (requires Admin JWT in headers).
+      Success: green "Doctor registered!" alert. Form resets. Stats refresh.
+      Error: red alert with error message.
+
+──────────────────────────────────────────────────────────────────────────────
+10.15  Profile Page
+──────────────────────────────────────────────────────────────────────────────
+  /profile. Fetches GET /api/profile/me on load.
+  
+  Top section: avatar (circle, Cloudinary URL or placeholder), name, email, role badge.
+  
+  Edit form:
+    Phone Number, Date of Birth, Blood Group (dropdown), Allergies (text), Emergency Contact.
+  
+  Avatar upload: file input → multipart POST to update avatarUrl via Cloudinary.
+  Save → PATCH /api/profile/me.
+  Success/error inline feedback.
+
+──────────────────────────────────────────────────────────────────────────────
+10.16  Notification & Email System
+──────────────────────────────────────────────────────────────────────────────
+  Every significant patient-facing action triggers an email:
+  
+    Action                      | Email Sent To
+    ────────────────────────────────────────────────────────
+    Appointment created         | Patient (confirmation)
+    Appointment status changed  | Patient (status update)
+    Prescription written        | Patient (medication details)
+    Follow-up requested         | Doctor (notification)
+    Follow-up approved          | Patient (approval confirmation)
+    Tomorrow's appointment      | Patient (reminder, via cron job at 08:00)
+  
+  All notification records are written to the Notification collection
+  including: type, channel, subject, body, success boolean, and errorMsg
+  if the send failed. This provides a full audit trail.
+
+──────────────────────────────────────────────────────────────────────────────
+10.17  Deployment & CI/CD Pipeline
+──────────────────────────────────────────────────────────────────────────────
+  1. Developer pushes code to GitHub (main branch).
+  2. Vercel detects the push, runs "npm run build" in /client.
+  3. Vite compiles React → static assets in /client/dist.
+  4. Vercel deploys the static files to the global CDN.
+  5. Render detects the push, rebuilds the Node.js server in /server.
+  6. Render restarts the persistent web service.
+  7. New API routes and frontend code are live within ~1-2 minutes.
+  
+  Schema Changes: If prisma/schema.prisma is modified, "npx prisma db push"
+  must be run manually from the server directory against the production
+  MongoDB Atlas URI to sync collection/index changes.
+
+================================================================================
+  END OF MEDILINK TECHNICAL REPORT
+  For queries, contact the platform maintainer via GitHub Issues.
+================================================================================
