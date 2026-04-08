@@ -1,0 +1,41 @@
+{
+  "nav": {
+    "home": "Home",
+    "myHistory": "My History",
+    "medicalRecords": "Medical Records",
+    "messages": "Messages",
+    "bookAppointment": "Book Appointment",
+    "bloodBank": "Blood Bank",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "bookAppointment": "Book an Appointment",
+    "consultationHistory": "Consultation History",
+    "sos": "🚨 SOS Emergency Ambulance"
+  },
+  "login": {
+    "title": "LOGIN",
+    "email": "Email or Phone",
+    "password": "Password",
+    "submit": "Submit",
+    "noAccount": "Don't have an account?",
+    "signup": "Signup"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "submit": "Submit",
+    "hasAccount": "Already have an account?",
+    "login": "Login"
+  },
+  "bloodBank": {
+    "title": "Every Drop Counts",
+    "subtitle": "Find donors, register to donate, or post an urgent blood request — all in one place.",
+    "findTab": "🔍 Find Donors & Requests",
+    "donateTab": "🩸 Register as Donor",
+    "requestTab": "🚨 Post Blood Request"
+  }
+}
