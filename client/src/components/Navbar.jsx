@@ -1,36 +1,10 @@
-import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../ThemeContext.jsx'
-import { API_BASE_URL } from '../config.js'
 import './Navbar.css'
 
 /* ── Top Navbar (sticky, all screen sizes) ── */
 export function Navbar({ role = 'patient' }) {
   const { theme, toggleTheme } = useTheme()
-  const [unreadCount, setUnreadCount] = useState(0)
-
-  useEffect(() => {
-    fetchUnreadCount()
-    // Poll every 60 seconds for new notifications
-    const interval = setInterval(fetchUnreadCount, 60000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const fetchUnreadCount = async () => {
-    try {
-      const token = window.localStorage.getItem('medilink_token')
-      if (!token) return
-      const res = await fetch(`${API_BASE_URL}/notifications/unread`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setUnreadCount(data.unreadCount || 0)
-      }
-    } catch {
-      // silently fail
-    }
-  }
 
   return (
     <header className="ml-navbar">
@@ -67,14 +41,6 @@ export function Navbar({ role = 'patient' }) {
         </nav>
 
         <div className="ml-navbar-actions">
-          {/* Notification Bell */}
-          <Link to="/notifications" className="ml-notif-bell" aria-label="Notifications">
-            🔔
-            {unreadCount > 0 && (
-              <span className="ml-notif-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-            )}
-          </Link>
-
           <button onClick={toggleTheme} className="ml-theme-btn" aria-label="Toggle dark mode">
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
@@ -102,13 +68,12 @@ const patientTabs = [
   { to: '/dashboard',            icon: '🏠', label: 'Home'     },
   { to: '/discovery',            icon: '🔍', label: 'Discovery'},
   { to: '/appointments',         icon: '📅', label: 'Book'     },
-  { to: '/notifications',        icon: '🔔', label: 'Alerts'   },
   { to: '/messages',             icon: '💬', label: 'Messages' },
+  { to: '/profile',              icon: '👤', label: 'Profile'  },
 ]
 
 const doctorTabs = [
   { to: '/doctor/dashboard', icon: '🏠', label: 'Dashboard' },
-  { to: '/notifications',   icon: '🔔', label: 'Alerts'    },
   { to: '/messages',         icon: '💬', label: 'Messages'  },
 ]
 
@@ -137,3 +102,4 @@ export function BottomNav({ role = 'patient' }) {
     </nav>
   )
 }
+
