@@ -1,0 +1,41 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "myHistory": "Mi Historial",
+    "medicalRecords": "Registros Médicos",
+    "messages": "Mensajes",
+    "bookAppointment": "Reservar Cita",
+    "bloodBank": "Banco de Sangre",
+    "logout": "Cerrar Sesión"
+  },
+  "dashboard": {
+    "bookAppointment": "Reservar Cita",
+    "consultationHistory": "Historial de Consultas",
+    "sos": "🚨 Ambulancia de Emergencia"
+  },
+  "login": {
+    "title": "INICIAR SESIÓN",
+    "email": "Correo o Teléfono",
+    "password": "Contraseña",
+    "submit": "Enviar",
+    "noAccount": "¿No tienes cuenta?",
+    "signup": "Regístrate"
+  },
+  "signup": {
+    "title": "Registrarse",
+    "name": "Nombre",
+    "email": "Correo",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "submit": "Enviar",
+    "hasAccount": "¿Ya tienes cuenta?",
+    "login": "Iniciar Sesión"
+  },
+  "bloodBank": {
+    "title": "Cada Gota Cuenta",
+    "subtitle": "Encuentra donantes, regístrate para donar, o publica una solicitud urgente de sangre.",
+    "findTab": "🔍 Buscar Donantes",
+    "donateTab": "🩸 Registrarse como Donante",
+    "requestTab": "🚨 Publicar Solicitud de Sangre"
+  }
+}
