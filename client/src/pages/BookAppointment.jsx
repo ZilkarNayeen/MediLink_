@@ -27,6 +27,7 @@ function BookAppointment() {
   // ── Doctor search state ──
   const [doctorSearch, setDoctorSearch] = useState(initialHospital)
   const [doctors, setDoctors] = useState([])
+  const [selectedDocWH, setSelectedDocWH] = useState(null)
   const [showDropdown, setShowDropdown] = useState(false)
   const [loadingDoctors, setLoadingDoctors] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(-1)
@@ -70,6 +71,11 @@ function BookAppointment() {
   const selectDoctor = (doctor) => {
     setForm((prev) => ({ ...prev, doctorOrService: doctor.fullName }))
     setDoctorSearch(doctor.fullName)
+    if (doctor.workingHours) {
+      setSelectedDocWH(JSON.parse(doctor.workingHours))
+    } else {
+      setSelectedDocWH(null)
+    }
     setShowDropdown(false)
   }
 
@@ -106,6 +112,15 @@ function BookAppointment() {
   const validateStep2 = () => form.contactNumber && form.email
   const validateStep3 = () => {
     if (!form.doctorOrService || !form.appointmentDate || !form.appointmentTime) return false
+    if (selectedDocWH) {
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+      const dayName = days[new Date(form.appointmentDate).getDay()]
+      const wh = selectedDocWH[dayName]
+      if (wh?.off) return false
+      
+      const apptTime = form.appointmentTime
+      if (apptTime < wh.start || apptTime > wh.end) return false
+    }
     return true
   }
 
@@ -280,6 +295,30 @@ function BookAppointment() {
                       <input className="ml-input" name="appointmentTime" type="time" required value={form.appointmentTime} onChange={handleChange} />
                     </div>
                   </div>
+                  {selectedDocWH && form.appointmentDate && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', background: 'var(--surface)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                      {(() => {
+                        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+                        const dayName = days[new Date(form.appointmentDate).getDay()]
+                        const wh = selectedDocWH[dayName]
+                        if (wh?.off) return <span style={{ color: 'var(--error)' }}>⚠️ Doctor is off on this day. Please select another date.</span>
+                        
+                        let timeError = false
+                        if (form.appointmentTime) {
+                          if (form.appointmentTime < wh.start || form.appointmentTime > wh.end) {
+                            timeError = true
+                          }
+                        }
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span>🕒 Doctor available from <strong>{wh.start}</strong> to <strong>{wh.end}</strong></span>
+                            {timeError && <span style={{ color: 'var(--error)' }}>⚠️ The selected time is outside the doctor's working hours.</span>}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
 
                   <div className="stepper-actions">
                     <button type="button" className="ml-btn ml-btn-ghost" onClick={prevStep}>← Back</button>
