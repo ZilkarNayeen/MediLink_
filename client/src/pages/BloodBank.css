@@ -1,76 +1,82 @@
 /* ================================================================
-   Blood Bank Portal — Premium Design
+   Blood Bank Portal
    ================================================================ */
 
 .bb-page {
   min-height: 100vh;
   background: var(--bg);
-  padding-bottom: var(--bottom-nav-height);
-  padding-top: var(--navbar-height);
+  /* Mobile padding to account for native-style bottom sheet / nav if added */
+  padding-bottom: 2rem;
 }
 
 @media (min-width: 769px) {
   .bb-page { padding-bottom: 0; }
 }
 
+/* ── Custom Blood Navbar ── */
+.bb-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.bb-logo {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #DC2626; /* Blood red */
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bb-nav-links {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.bb-nav-links a {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color var(--transition);
+}
+.bb-nav-links a:hover { color: #DC2626; }
+
 /* ── Hero ── */
 .bb-hero {
-  background: linear-gradient(135deg, #1a0505 0%, #7f1d1d 30%, #dc2626 60%, #991b1b 100%);
-  background-size: 300% 300%;
-  animation: ml-gradient-shift 10s ease infinite;
+  background: linear-gradient(135deg, rgba(220,38,38,0.05) 0%, rgba(220,38,38,0.15) 100%);
+  border-bottom: 1px solid var(--border);
   text-align: center;
   padding: 3.5rem 1.25rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.bb-hero::before {
-  content: '';
-  position: absolute;
-  width: 500px; height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-  top: -200px; right: -100px;
-  pointer-events: none;
-  animation: ml-float 7s ease-in-out infinite;
-}
-
-.bb-hero::after {
-  content: '';
-  position: absolute;
-  width: 350px; height: 350px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(220,38,38,0.3) 0%, transparent 70%);
-  bottom: -150px; left: -80px;
-  pointer-events: none;
-  animation: ml-float 9s ease-in-out infinite reverse;
 }
 
 .bb-hero h1 {
   font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 900;
-  color: #fff;
+  color: var(--text);
   margin-bottom: 0.75rem;
   letter-spacing: -0.02em;
-  position: relative;
-  z-index: 1;
 }
 
 .bb-hero h1 span {
-  background: linear-gradient(135deg, #fca5a5, #fef08a);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #DC2626;
 }
 
 .bb-hero p {
-  color: rgba(255,255,255,0.8);
-  font-size: 1.05rem;
+  color: var(--text-muted);
+  font-size: 1.1rem;
   max-width: 600px;
   margin: 0 auto;
-  position: relative;
-  z-index: 1;
-  line-height: 1.6;
 }
 
 /* ── Content ── */
@@ -93,25 +99,15 @@
   padding: 0.7rem 1.25rem;
   border-radius: var(--radius-full);
   background: var(--surface-2);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   color: var(--text);
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: all var(--transition-bounce);
+  transition: all var(--transition);
 }
-.bb-tab:hover {
-  background: var(--surface-3);
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
-}
-.bb-tab.active {
-  background: linear-gradient(135deg, #DC2626, #B91C1C);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 4px 16px rgba(220,38,38,0.35);
-  transform: translateY(-2px);
-}
+.bb-tab:hover { background: var(--surface-3); border-color: var(--border-strong); }
+.bb-tab.active { background: #DC2626; color: white; border-color: #DC2626; box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
 
 /* ── Search Bar ── */
 .bb-search-row {
@@ -127,63 +123,36 @@
   align-items: flex-end;
 }
 
-.bb-search-col {
-  flex: 1;
-  min-width: 200px;
-}
-.bb-search-col label {
-  display: block;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+.bb-search-col { flex: 1; min-width: 200px; }
+.bb-search-col label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem; }
 
 .bb-select, .bb-input {
   width: 100%;
   padding: 0.75rem 1rem;
   border-radius: var(--radius);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-2);
   color: var(--text);
   font-size: 0.95rem;
   font-family: inherit;
   transition: all var(--transition);
-  outline: none;
 }
-.bb-select:focus, .bb-input:focus {
-  border-color: #DC2626;
-  box-shadow: 0 0 0 4px rgba(220,38,38,0.1);
-  background: var(--surface);
-  transform: translateY(-1px);
-}
+.bb-select:focus, .bb-input:focus { outline: none; border-color: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); background: var(--surface); }
 
 .bb-search-btn {
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, #DC2626, #B91C1C);
+  background: #DC2626;
   color: white;
   border: none;
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
   min-width: 140px;
-  height: 46px;
-  transition: all var(--transition-bounce);
-  box-shadow: 0 4px 12px rgba(220,38,38,0.25);
+  height: 44px; /* match input height */
+  transition: all var(--transition);
 }
-.bb-search-btn:hover {
-  background: linear-gradient(135deg, #B91C1C, #991B1B);
-  box-shadow: 0 6px 20px rgba(220,38,38,0.4);
-  transform: translateY(-2px);
-}
-.bb-search-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
+.bb-search-btn:hover { background: #B91C1C; box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
 
 /* ── Two Columns (Search Results) ── */
 .bb-two-col {
@@ -196,25 +165,22 @@
 }
 
 .bb-section-title {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--text);
   margin-bottom: 1.25rem;
-  padding-bottom: 0.6rem;
+  padding-bottom: 0.5rem;
   border-bottom: 2px solid var(--border);
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
 }
 
 .bb-empty {
   text-align: center;
-  padding: 2.5rem 1.5rem;
+  padding: 2rem;
   background: var(--surface-2);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
   color: var(--text-muted);
   font-style: italic;
-  border: 2px dashed var(--border);
+  border: 1px dashed var(--border-strong);
 }
 
 /* ── Blood Card ── */
@@ -227,67 +193,39 @@
   padding: 1.25rem;
   border-radius: var(--radius-lg);
   margin-bottom: 1rem;
-  transition: all var(--transition-bounce);
+  transition: all var(--transition);
   box-shadow: var(--shadow-sm);
-  cursor: default;
 }
-.bb-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(220,38,38,0.12);
-  border-color: rgba(220,38,38,0.3);
-}
+.bb-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: rgba(220,38,38,0.3); }
 
 .bb-card-blood-badge {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(220,38,38,0.12), rgba(220,38,38,0.06));
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: rgba(220,38,38,0.1);
   color: #DC2626;
   font-weight: 900;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   border: 2px solid rgba(220,38,38,0.2);
-  transition: all var(--transition);
-}
-.bb-card:hover .bb-card-blood-badge {
-  transform: scale(1.08);
-  border-color: rgba(220,38,38,0.4);
 }
 
-.bb-card-info {
-  flex: 1;
-  min-width: 0;
-}
+.bb-card-info { flex: 1; min-width: 0; }
 
-.bb-card-name {
-  font-weight: 800;
-  color: var(--text);
-  font-size: 1.05rem;
-  margin: 0 0 0.3rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.bb-card-meta {
-  font-size: 0.83rem;
-  color: var(--text-muted);
-  margin: 0 0 0.15rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
+.bb-card-name { font-weight: 800; color: var(--text); font-size: 1.1rem; margin: 0 0 0.25rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bb-card-meta { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.2rem 0; display: flex; align-items: center; gap: 0.4rem; }
 
 .bb-urgency-badge {
   display: inline-block;
-  padding: 0.2rem 0.65rem;
-  border-radius: var(--radius-full);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
   font-size: 0.7rem;
   font-weight: 800;
   color: white;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -300,37 +238,23 @@
   padding: 2.5rem 2rem;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  animation: ml-fadeUp 0.35s cubic-bezier(0.34,1.2,0.64,1);
-}
-
-.bb-form-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
-  background: rgba(220,38,38,0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  margin: 0 auto 1rem;
+  box-shadow: var(--shadow-md);
+  animation: ml-fadeUp 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 
 .bb-form-wrapper h2 {
-  font-size: 1.45rem;
-  font-weight: 900;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: var(--text);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
   text-align: center;
-  letter-spacing: -0.01em;
 }
 
 .bb-form-sub {
   text-align: center;
   color: var(--text-muted);
   margin-bottom: 2rem;
-  font-size: 0.92rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
 }
 
 .bb-form {
@@ -339,57 +263,46 @@
   gap: 1.25rem;
 }
 
-.bb-form-row {
-  display: flex;
-  gap: 1rem;
-}
-
-.bb-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-.bb-field label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
+.bb-field { display: flex; flex-direction: column; gap: 0.5rem; }
+.bb-field label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
 
 .bb-submit-btn {
   padding: 0.85rem;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, #DC2626, #B91C1C);
+  background: #DC2626;
   color: white;
   border: none;
   font-weight: 800;
   font-size: 1rem;
   cursor: pointer;
-  margin-top: 0.75rem;
-  transition: all var(--transition-bounce);
-  box-shadow: 0 4px 16px rgba(220,38,38,0.3);
+  margin-top: 1rem;
+  transition: all var(--transition);
+  box-shadow: 0 4px 12px rgba(220,38,38,0.25);
 }
-.bb-submit-btn:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 8px 24px rgba(220,38,38,0.45);
-}
-.bb-submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-.bb-submit-btn-danger {
-  background: linear-gradient(135deg, #dc2626, #991b1b);
-}
+.bb-submit-btn:hover { background: #B91C1C; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(220,38,38,0.35); }
+.bb-submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ── Mobile ── */
 @media (max-width: 600px) {
+  .bb-nav-links { display: none; /* Hide top links on very small screens, assumed handled by BottomNav if integrated */ }
   .bb-search-row { flex-direction: column; align-items: stretch; }
   .bb-search-btn { width: 100%; }
-  .bb-form-row { flex-direction: column; }
-  .bb-hero { padding: 2.5rem 1rem; }
-  .bb-content { padding: 1.5rem 1rem; }
-  .bb-form-wrapper { padding: 2rem 1.25rem; }
+}
+
+/* ── Custom Blood Bank Map Markers ── */
+.bb-marker-donor, .bb-marker-request {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.4);
+  border: 2px solid #dc2626;
+}
+
+.bb-marker-request {
+  border: 2px solid #d97706;
+  background: rgba(255, 255, 255, 0.9);
+  animation: pulse-sos 2s infinite;
 }
