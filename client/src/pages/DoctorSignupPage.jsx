@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config.js'
-import '../styles/AuthPages.css'
+import './AuthPages.css'
 
 function DoctorSignupPage() {
   const navigate = useNavigate()
@@ -33,7 +33,7 @@ function DoctorSignupPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.message || 'Signup failed')
       setSuccess('Account created! You can now sign in as a doctor.')
-      setTimeout(() => navigate('/login'), 2000)
+      setTimeout(() => navigate('/doctor'), 2000)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -87,7 +87,7 @@ function DoctorSignupPage() {
         </form>
 
         <p className="auth-footer" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
-          Already registered? <Link to="/login">Sign in</Link>
+          Already registered? <Link to="/doctor">Sign in</Link>
         </p>
         <p className="auth-footer" style={{ margin: 0 }}>
           Patient? <Link to="/signup">Go to Patient Signup</Link>
