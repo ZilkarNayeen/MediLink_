@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from '../config.js'
-import '../styles/AuthPages.css'
+import './AuthPages.css'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -27,24 +27,10 @@ function LoginPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.message || 'Login failed')
       if (data.token) {
-        // Clear ALL old tokens first to prevent stale token conflicts
-        localStorage.removeItem('medilink_token')
-        localStorage.removeItem('medilink_user')
-        localStorage.removeItem('medilink_doctor_token')
-        localStorage.removeItem('medilink_doctor')
-        localStorage.removeItem('medilink_doctor_name')
-
-        if (data.user?.role === 'doctor') {
-          localStorage.setItem('medilink_doctor_token', data.token)
-          localStorage.setItem('medilink_doctor', JSON.stringify(data.user))
-          localStorage.setItem('medilink_doctor_name', data.user?.fullName)
-          navigate('/doctor/dashboard')
-        } else {
-          localStorage.setItem('medilink_token', data.token)
-          if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
-          navigate('/dashboard')
-        }
+        localStorage.setItem('medilink_token', data.token)
+        if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
       }
+      navigate('/dashboard')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -56,11 +42,11 @@ function LoginPage() {
     <div className="auth-page">
       <div className="auth-card ml-fade-up">
         {/* Brand */}
-        <div className="auth-brand">
+        <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
           <div className="auth-brand-mark">⚕️</div>
           <span className="auth-brand-name">MediLink</span>
           <span className="auth-brand-tagline">Your Health, Connected</span>
-        </div>
+        </Link>
 
         <h1 className="auth-heading">Welcome back</h1>
 
@@ -104,9 +90,6 @@ function LoginPage() {
 
         <p className="auth-footer">
           Don't have an account? <Link to="/signup">Create one</Link>
-        </p>
-        <p className="auth-footer" style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-          Are you a medical professional? <Link to="/doctor/signup">Register as a Doctor</Link>
         </p>
 
         <div className="auth-features">
