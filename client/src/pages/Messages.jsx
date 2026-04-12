@@ -16,7 +16,6 @@ function Messages() {
   const [availableDoctors, setAvailableDoctors] = useState([])
   const [attachment, setAttachment] = useState(null)
   const [showChat, setShowChat] = useState(false)
-  const [sendError, setSendError] = useState('')
 
   // ── WebRTC Telemedicine States ──
   const [stream, setStream] = useState(null)
@@ -127,13 +126,11 @@ function Messages() {
     setActiveConvo({ id: 'new', otherUser: { id: doctor.id, fullName: doctor.fullName, role: 'doctor' } })
     setMessages([])
     setShowCompose(false)
-    setShowChat(true)
   }
 
   const sendMessage = async (e) => {
     e.preventDefault()
     if ((!text.trim() && !attachment) || !activeConvo) return
-    setSendError('')
     const receiverId = activeConvo.otherUser.id
     try {
       const formData = new FormData()
@@ -146,7 +143,7 @@ function Messages() {
         body: formData
       })
       const saved = await res.json()
-      if (!res.ok) throw new Error(saved?.message || 'Failed to send message')
+      if (!res.ok) throw new Error('Failed to send')
       setMessages(prev => [...prev, saved.message])
       if (activeConvo.id === 'new') {
         fetchConversations()
@@ -155,10 +152,7 @@ function Messages() {
       socket?.emit('send_message', { receiverId, messageData: saved.message })
       setText('')
       setAttachment(null)
-    } catch (err) {
-      console.error(err)
-      setSendError(err.message)
-    }
+    } catch (err) { console.error(err) }
   }
 
   /* ================================================================
@@ -458,11 +452,6 @@ function Messages() {
                 />
                 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {sendError && (
-                    <div style={{ color: 'var(--error, #ef4444)', fontSize: '0.8rem', padding: '0.3rem 0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>
-                      ⚠️ {sendError}
-                    </div>
-                  )}
                   {attachment && (
                     <div className="messages-attachment-preview">
                       📎 {attachment.name}
