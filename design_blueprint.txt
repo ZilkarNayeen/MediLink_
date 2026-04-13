@@ -1,0 +1,315 @@
+================================================================================
+  MediLink Design System Blueprint  —  v2.0  VIBRANT EDITION
+  Last Updated: April 2026
+  Source of truth for all UI/UX decisions. Read before touching any CSS.
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+  1. DESIGN PHILOSOPHY
+────────────────────────────────────────────────────────────────────────────────
+
+MediLink targets a mobile-first, premium healthcare aesthetic. The guiding
+principles are:
+
+  • VIBRANT — Rich, saturated colors. No dull grays. Every surface breathes.
+  • ANIMATED — Micro-interactions on every interactive element. Nothing is static.
+  • FROSTED — Glassmorphism across all overlays, navbars, and modal backdrops.
+  • BOUNCY   — Cubic-bezier spring physics for hovers and state transitions.
+  • DARK-READY — Full automatic dark mode via [data-theme="dark"] on <body>.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  2. COLOR TOKENS  (CSS Variables — src/index.css)
+────────────────────────────────────────────────────────────────────────────────
+
+Never hard-code hex values. Always reference these CSS variables.
+
+  BRAND
+  ─────
+  --primary:        #0057B7   (deep brand blue)
+  --primary-light:  #2563EB   (vivid electric blue — hover states, active links)
+  --primary-dark:   #1E3A8A   (dark pressed state)
+  --accent:         #06B6D4   (cyan — secondary action color)
+  --accent-dark:    #0891B2
+  --violet:         #7C3AED   (purple — AI Checker, video call accents)
+  --violet-light:   #A78BFA
+  --pink:           #EC4899   (emergency, blood bank, danger highlights)
+  --emerald:        #10B981   (success, online indicators, confirm actions)
+
+  GRADIENT PRESETS  (use these for buttons, heroes, badges — never plain color)
+  ─────────────────
+  --grad-primary:  linear-gradient(135deg, #0057B7, #2563EB, #7C3AED)
+  --grad-accent:   linear-gradient(135deg, #06B6D4, #10B981)
+  --grad-danger:   linear-gradient(135deg, #DC2626, #EC4899)
+  --grad-warm:     linear-gradient(135deg, #F59E0B, #EF4444)
+  --grad-cool:     linear-gradient(135deg, #7C3AED, #06B6D4)
+
+  SEMANTIC STATUS
+  ───────────────
+  --danger:        #EF4444   --danger-bg:  #FEF2F2
+  --warning:       #F59E0B   --warning-bg: #FFFBEB
+  --success:       #10B981   --success-bg: #ECFDF5
+
+  BACKGROUNDS & SURFACES
+  ───────────────────────
+  --bg:            #F0F4FF   (light) / #060C1F   (dark) — has a blue tint
+  --bg-2:          #E4ECFF   (light) / #0D1630   (dark)
+  --surface:       #FFFFFF   (light) / #111827   (dark)
+  --surface-2:     #F8FAFF   (light) / #1A2540   (dark)
+  --surface-3:     #EEF2FF   (light) / #1F2D4E   (dark)
+
+  BORDERS
+  ───────
+  --border:        #DDE5FF   (light) / #1E3066   (dark)
+  --border-strong: #BFCFFF   (light) / #2A45A0   (dark)
+
+  TEXT
+  ────
+  --text:          #0F1729   (light) / #E8EEFF   (dark)
+  --text-muted:    #5B6FA8   (light) / #8899CC   (dark)
+  --text-light:    #94A3C4   (light) / #506080   (dark)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  3. TYPOGRAPHY
+────────────────────────────────────────────────────────────────────────────────
+
+  Font Family:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+  Loaded from:   Google Fonts (weights 300–900)
+  Base size:     16px  /  line-height: 1.6
+  Headings:      font-weight 800+  /  letter-spacing: -0.02em to -0.03em
+  Smoothing:     -webkit-font-smoothing: antialiased always
+
+  RADII
+  ─────
+  --radius-sm:    6px    (small tags, tiny badges)
+  --radius:       12px   (buttons, inputs, standard chips)
+  --radius-lg:    16px   (cards, search rows)
+  --radius-xl:    24px   (modals, large panels)
+  --radius-full:  9999px (pill buttons, avatars)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  4. SHADOWS
+────────────────────────────────────────────────────────────────────────────────
+
+Shadows are BLUE-TINTED — not gray. This is intentional to feel luminous.
+
+  --shadow-sm:  0 1px 3px rgba(37,99,235,0.08),  0 1px 2px rgba(0,0,0,0.04)
+  --shadow:     0 4px 20px rgba(37,99,235,0.12),  0 2px 8px rgba(0,0,0,0.06)
+  --shadow-lg:  0 10px 40px rgba(37,99,235,0.16), 0 4px 16px rgba(0,0,0,0.08)
+  --shadow-xl:  0 20px 60px rgba(37,99,235,0.22)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  5. ANIMATION SYSTEM
+────────────────────────────────────────────────────────────────────────────────
+
+  TRANSITIONS
+  ───────────
+  --transition:        0.2s cubic-bezier(0.4, 0, 0.2, 1)         — standard
+  --transition-slow:   0.35s cubic-bezier(0.4, 0, 0.2, 1)        — page-level
+  --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)    — spring bounce
+
+  KEYFRAME ANIMATIONS  (all defined in index.css, use as classes)
+  ──────────────────
+  ml-fadeUp           — slides element up from 20px below with opacity: 0 → 1
+  ml-fade-up-2/3      — same with 0.1s / 0.2s stagger delays
+  ml-fadeIn           — simple opacity fade used for overlays
+  ml-scaleIn          — scales from 94% while fading in (modals, dropdowns)
+  ml-pulse            — breathing scale 1→0.92 (live status indicators)
+  ml-float            — gentle Y float ±8px (hero decorative elements)
+  ml-gradient-shift   — animates background-position (navbar logo, hero)
+  ml-glow-pulse       — alternates box-shadow glow color (SOS markers)
+  ml-shimmer          — skeleton loader travelling highlight
+
+  SHIMMER BUTTONS (built-in)
+  ──────────────
+  Every .ml-btn has a ::after pseudo-element that performs a light sweep
+  animation from left→right on :hover. This is automatic — do NOT override.
+
+  USAGE RULES
+  ───────────
+  • Use ml-fade-up on section entries and cards revealed on mount.
+  • Use ml-scale-in on modals, dropdowns, and toast notifications.
+  • Use --transition-bounce for ALL hover lift effects on interactive cards.
+  • Never use linear timing functions for user-initiated interactions.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  6. GLOBAL COMPONENT API  (Utility classes — use these, never ad-hoc)
+────────────────────────────────────────────────────────────────────────────────
+
+  CARDS
+  ─────
+  .ml-card              Standard glass-white container. Auto hover-lift + shadow.
+  .ml-card-glow         Adds gradient glow behind card on hover via ::before.
+  .ml-gradient-border   Gradient border using padding-box trick.
+
+  BUTTONS
+  ───────
+  .ml-btn               Base. Always pair with a variant below.
+  .ml-btn-primary       Blue-to-violet gradient + glow. Use for primary actions.
+  .ml-btn-accent        Cyan-to-emerald gradient. Use for secondary confirmation.
+  .ml-btn-danger        Red-to-pink gradient. Use for delete/emergency actions.
+  .ml-btn-ghost         Transparent with border. Use for cancel/back.
+  .ml-btn-sm            Smaller padding variant.
+  NOTE: All variants have automatic shimmer sweep on hover.
+
+  INPUTS & FORMS
+  ──────────────
+  .ml-input             Full-width styled input. Focus glow + subtle lift.
+  .ml-label             UPPERCASE, bold label above inputs (auto font-size).
+  .ml-field             Flex column wrapper (label + input + error message).
+
+  STATUS & FEEDBACK
+  ─────────────────
+  .ml-badge             Base pill/chip.
+    .ml-badge-success / .ml-badge-warning / .ml-badge-danger / .ml-badge-primary
+  .ml-alert             Full-width message banner (use above forms).
+    .ml-alert-success / .ml-alert-error / .ml-alert-warning
+  .ml-skeleton          Animated shimmer placeholder for loading states.
+
+  TEXT UTILITY
+  ────────────
+  .ml-gradient-text     Applies --grad-primary as a clipped text gradient.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  7. NAVIGATION COMPONENTS
+────────────────────────────────────────────────────────────────────────────────
+
+  TOP NAVBAR  (Navbar.jsx)
+  ──────────
+  • Frosted glass: background rgba + backdrop-filter: blur(20px)
+  • Logo: animated gradient text (ml-gradient-shift keyframe, 6s loop)
+  • Nav links: have sliding underline pill on hover via ::after
+  • Logout: red-gradient on hover, lift + glow effect
+  • Theme toggle: rotates 20deg and scales on click
+
+  BOTTOM NAV  (BottomNav in Navbar.jsx — mobile only ≤768px)
+  ──────────
+  • Also frosted glass with blue-tinted top border
+  • Active tab: glowing gradient pill indicator above the icon (::before)
+  • Hover/active icon: translateY(-3px) scale(1.15)
+  • Hidden on desktop (≥769px) automatically
+
+  ROLE-BASED TABS
+  ───────────────
+  patient: 🏠 Home  /  📅 Book  /  💬 Messages  /  🩸 Blood  /  👤 Profile
+  doctor:  🏠 Dashboard  /  💬 Messages
+  admin:   🛡️ Dashboard
+
+
+────────────────────────────────────────────────────────────────────────────────
+  8. PAGE-LEVEL DESIGN PATTERNS
+────────────────────────────────────────────────────────────────────────────────
+
+  HERO SECTIONS
+  ─────────────
+  Use --grad-primary or a 5-stop animated gradient with background-size: 300%
+  and ml-gradient-shift animation. Always add at least 2 positioned ::before /
+  ::after floating radial orbs with the ml-float animation (opposite directions).
+
+  ACTION CARDS (Dashboard Grid)
+  ─────────────────────────────
+  Use border-top: 3px solid [accent color] for per-card color coding.
+  Never use the same color for adjacent cards in a grid.
+  Icons inside cards must scale + rotate on card hover.
+
+  FORMS
+  ─────
+  Max-width 540px centered with 2rem padding inside .ml-card.
+  Always show a .ml-alert above the submit button on error/success.
+  Submit button: full-width .ml-btn-primary with 0.85rem padding.
+
+  MAPS (Leaflet)
+  ──────────────
+  Wrap in a container with overflow: hidden and explicit height.
+  Set z-index: 0 on .leaflet-container so modals overlay correctly.
+  SOS markers: .sos-marker-pulse with ml-glow-pulse animation.
+  Blood Bank markers: emoji-based DivIcons in circular cards.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  9. TECH STACK & SERVICES
+────────────────────────────────────────────────────────────────────────────────
+
+  Frontend:   React 18 + Vite  (deployed on Vercel)
+  Routing:    react-router-dom v6
+  i18n:       react-i18next  (EN / BN / ES locales)
+  Styling:    Vanilla CSS — 100% custom. No Tailwind.
+  Maps:       react-leaflet + Leaflet.js  →  OpenStreetMap tiles
+  Geocoding:  Nominatim API  (client/src/utils/geocode.js)  — free, no key
+  Socket:     socket.io-client  (real-time chat + WebRTC signaling)
+  Video:      Native browser WebRTC (RTCPeerConnection + STUN servers)
+
+  Backend:    Node.js + Express  (deployed on Render.com free tier)
+  Database:   MongoDB via Prisma (MongoDB Atlas free tier)
+  Auth:       JWT  (7d expiry)  /  bcrypt passwords
+  Files:      Cloudinary  (medical records + chat attachments)
+  Email:      Nodemailer + Gmail SMTP
+  AI:         Groq SDK  →  llama-3.1-8b-instant  model
+  Scheduler:  node-cron  (appointment reminder emails)
+
+  Backend Live URL:  https://medilink-x9p5.onrender.com
+
+
+────────────────────────────────────────────────────────────────────────────────
+  10. ROUTES & PAGES MAP
+────────────────────────────────────────────────────────────────────────────────
+
+  PUBLIC
+  ──────
+  /                   LandingPage.jsx       Dark hero, feature grid, CTA
+  /login              LoginPage.jsx         Patient login
+  /signup             SignupPage.jsx        Patient registration
+  /blood-bank         BloodBank.jsx         Public blood donor map + forms
+  /doctor             DoctorLoginPage.jsx
+  /admin              AdminLoginPage.jsx
+
+  PATIENT (requires medilink_token)
+  ──────────────────────────────────
+  /dashboard          Dashboard.jsx         Quick actions, AI chat, SOS
+  /appointments       BookAppointment.jsx
+  /consultation-history  ConsultationHistory.jsx
+  /records            MedicalRecords.jsx    Cloudinary uploads
+  /messages           Messages.jsx          Real-time chat + WebRTC video
+  /profile            ProfilePage.jsx       Edit personal info, allergies, etc.
+
+  DOCTOR (requires medilink_doctor_token)
+  ────────────────────────────────────────
+  /doctor/dashboard   DoctorDashboard.jsx   View/manage appointments
+
+  ADMIN (requires medilink_admin_token)
+  ──────────────────────────────────────
+  /admin/dashboard    AdminDashboard.jsx    Analytics, emergency map, add doctor
+
+
+────────────────────────────────────────────────────────────────────────────────
+  11. CRITICAL RULES
+────────────────────────────────────────────────────────────────────────────────
+
+  DO
+  ──
+  ✓ Always use CSS variables — never raw hex values in components.
+  ✓ Use --transition-bounce for all card/button interaction transforms.
+  ✓ Add ml-fade-up to all section-level elements on mount.
+  ✓ Wrap every map in a container with overflow: hidden and explicit height.
+  ✓ Use .ml-btn variants — never write custom button CSS from scratch.
+  ✓ Mobile-first: default styles for <768px, override for ≥769px only.
+  ✓ Add padding-bottom: var(--bottom-nav-height) to all page wrappers.
+
+  DON'T
+  ─────
+  ✗ Never hard-code colors directly in JSX style props (except one-off overrides).
+  ✗ Never use transition: all without a duration — always be specific.
+  ✗ Never import a new font — Inter only.
+  ✗ Never install a UI component library (no MUI, Chakra, Ant Design).
+  ✗ Never use z-index > 9999 except for full-screen video overlays.
+  ✗ Never put the .env file in git (it's gitignored correctly).
+
+
+================================================================================
+  END OF BLUEPRINT
+================================================================================
