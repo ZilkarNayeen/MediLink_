@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { API_BASE_URL } from '../config.js'
-import '../styles/AuthPages.css'
+import './AuthPages.css'
 
 function SignupPage() {
-  const navigate = useNavigate()
   const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -32,12 +31,8 @@ function SignupPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.message || 'Signup failed')
-      if (data.token) {
-        localStorage.setItem('medilink_token', data.token)
-        if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
-        navigate('/dashboard') // Go to dashboard after signup
-      }
-      setSuccess('Account created! Redirecting...')
+      if (data.token) localStorage.setItem('medilink_token', data.token)
+      setSuccess('Account created! You can now sign in.')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -48,12 +43,11 @@ function SignupPage() {
   return (
     <div className="auth-page">
       <div className="auth-card ml-fade-up">
-        {/* Brand */}
-        <div className="auth-brand">
+        <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
           <div className="auth-brand-mark">⚕️</div>
           <span className="auth-brand-name">MediLink</span>
           <span className="auth-brand-tagline">Your Health, Connected</span>
-        </div>
+        </Link>
 
         <h1 className="auth-heading">Create your account</h1>
 
@@ -88,9 +82,6 @@ function SignupPage() {
 
         <p className="auth-footer">
           Already have an account? <Link to="/login">Sign in</Link>
-        </p>
-        <p className="auth-footer" style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-          Are you a medical professional? <Link to="/doctor/signup">Register as a Doctor</Link>
         </p>
 
         <div className="auth-features">
