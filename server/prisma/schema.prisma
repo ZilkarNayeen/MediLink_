@@ -1,6 +1,12 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
-  engineType = "binary"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -15,13 +21,17 @@ model User {
   passwordHash     String
   phone            String?
   role             String            @default("patient")
-  specialty        String?
-  workingHours     String?
+  specialty        String?           // Used for classifying doctors
+  dateOfBirth      String?
+  bloodGroup       String?
+  allergies        String?
+  emergencyContact String?
+  avatarUrl        String?
+  workingHours     String?           // JSON: { monday: {start, end, off}, ... }
   createdAt        DateTime          @default(now())
   appointments     Appointment[]
   followUpRequests FollowUpRequest[]
   prescriptions    Prescription[]
-  notificationPref String            @default("email")
   notifications    Notification[]
   medicalRecords   MedicalRecord[]
 }
@@ -49,6 +59,7 @@ model Appointment {
   followUpRequests FollowUpRequest[]
   prescriptions    Prescription[]
   notifications    Notification[]
+  medicalRecords   MedicalRecord[]
 }
 
 model FollowUpRequest {
@@ -91,7 +102,6 @@ model Notification {
   subject String
   body    String
   sentAt  DateTime @default(now())
-  read    Boolean  @default(false)
   success Boolean  @default(true)
   errorMsg String?
 
@@ -106,22 +116,15 @@ model MedicalRecord {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   title         String
   description   String?
-  recordType    String   
-  fileUrl       String?  
+  recordType    String   // e.g., "lab_result", "doctor_note", "xray"
+  fileUrl       String?  // Cloudinary/AWS URL
   createdAt     DateTime @default(now())
 
   patientId     String   @db.ObjectId
   patient       User     @relation(fields: [patientId], references: [id])
-}
 
-model EmergencyRequest {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  latitude    Float
-  longitude   Float
-  status      String   @default("pending") // pending, dispatched, resolved
-  createdAt   DateTime @default(now())
-
-  userId      String   @db.ObjectId
+  appointmentId String?      @db.ObjectId
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
 }
 
 model Conversation {
@@ -140,8 +143,86 @@ model Message {
   senderId       String       @db.ObjectId
   conversationId String       @db.ObjectId
   hasAttachment  Boolean      @default(false)
-  attachmentUrl  String?
+  fileUrl        String?
   createdAt      DateTime     @default(now())
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model EmergencyRequest {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  latitude    Float
+  longitude   Float
+  status      String   @default("pending") // pending, dispatched, resolved
+  createdAt   DateTime @default(now())
+  
+  userId      String   @db.ObjectId
+}
+
+model Referral {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  referringDocId   String   @db.ObjectId
+  referredToDocId  String   @db.ObjectId
+  patientId        String   @db.ObjectId
+  notes            String
+  createdAt        DateTime @default(now())
+}
+
+model BloodDonor {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  fullName    String
+  bloodGroup  String
+  phone       String
+  city        String
+  lastDonated DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model BloodRequest {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientName   String
+  bloodGroup    String
+  hospital      String
+  city          String
+  phone         String
+  urgency       String   @default("regular") // regular, urgent, emergency
+  status        String   @default("open")
+  createdAt     DateTime @default(now())
+}
+
+model Hospital {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  city             String
+  address          String?
+  contactPhone     String?
+  contactEmail     String?
+  imageUrl         String?
+  description      String?
+  createdAt        DateTime          @default(now())
+
+  hospitalServices HospitalService[]
+}
+
+model Service {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  type             String            // "TEST" or "OPERATION"
+  description      String?
+  basePrice        Float?
+  createdAt        DateTime          @default(now())
+
+  hospitalServices HospitalService[]
+}
+
+model HospitalService {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  price            Float?
+  available        Boolean           @default(true)
+  
+  hospitalId       String            @db.ObjectId
+  hospital         Hospital          @relation(fields: [hospitalId], references: [id])
+  
+  serviceId        String            @db.ObjectId
+  service          Service           @relation(fields: [serviceId], references: [id])
 }
