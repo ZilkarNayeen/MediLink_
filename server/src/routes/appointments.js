@@ -1,18 +1,11 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 import { authenticate } from '../middleware/authMiddleware.js'
-import { notify } from '../services/notificationService.js'
-import {
-  appointmentConfirmationEmail,
-  appointmentAcceptedEmail,
-  appointmentRescheduledEmail,
-} from '../services/emailService.js'
-import {
-  appointmentConfirmationSMS,
-  appointmentAcceptedSMS,
-  appointmentRescheduledSMS,
-} from '../services/smsService.js'
+import { sendNotification } from '../services/notificationService.js'
+import { appointmentConfirmationEmail } from '../services/emailTemplates.js'
 
+const prisma = new PrismaClient()
 const router = express.Router()
 
 // All appointment routes require authentication
@@ -55,35 +48,35 @@ router.post('/', async (req, res) => {
       },
     })
 
-    // ── Send Appointment Confirmation (Email + SMS) ──
-    const emailData = appointmentConfirmationEmail({
-      patientName,
-      doctorOrService,
-      appointmentDate,
-      appointmentTime,
-    })
-    const smsBody = appointmentConfirmationSMS({
-      patientName,
-      doctorOrService,
-      appointmentDate,
-      appointmentTime,
+    // ── Send confirmation email (fire-and-forget) ──
+    const { subject, html } = appointmentConfirmationEmail({
+      patientName: appointment.patientName,
+      doctorOrService: appointment.doctorOrService,
+      appointmentDate: appointment.appointmentDate,
+      appointmentTime: appointment.appointmentTime,
     })
 
-    notify({
-      userId: req.user.userId,
-      type: 'appointment_confirmation',
-      channel: 'both',
-      appointmentId: appointment.id,
-      subject: emailData.subject,
-      body: smsBody,
-      html: emailData.html,
-      recipientEmail: email,
-      recipientPhone: contactNumber,
-    }).catch(err => console.error('[NOTIFY] Appointment confirmation failed:', err.message))
+    sendNotification({
+      email: appointment.email,
+      subject,
+      html,
+    }).then(() => {
+      // Log the notification
+      prisma.notification.create({
+        data: {
+          type: 'confirmation',
+          channel: 'email',
+          subject,
+          body: `Confirmation sent for appointment on ${appointment.appointmentDate}`,
+          userId: req.user.userId,
+          appointmentId: appointment.id,
+        },
+      }).catch((err) => logger.error('Notification log error:', err))
+    }).catch((err) => logger.error('Confirmation notification error:', err))
 
     return res.status(201).json({ message: 'Appointment created', appointment })
   } catch (error) {
-    console.error('Create appointment error:', error)
+    logger.error('Create appointment error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -98,7 +91,7 @@ router.get('/', async (req, res) => {
 
     return res.json({ appointments })
   } catch (error) {
-    console.error('List appointments error:', error)
+    logger.error('List appointments error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -128,7 +121,7 @@ router.get('/doctor/all', async (req, res) => {
 
     return res.json({ appointments })
   } catch (error) {
-    console.error('Doctor list appointments error:', error)
+    logger.error('Doctor list appointments error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -151,7 +144,7 @@ router.get('/:id', async (req, res) => {
 
     return res.json({ appointment })
   } catch (error) {
-    console.error('Get appointment error:', error)
+    logger.error('Get appointment error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -202,7 +195,7 @@ router.put('/:id', async (req, res) => {
 
     return res.json({ message: 'Appointment updated', appointment })
   } catch (error) {
-    console.error('Update appointment error:', error)
+    logger.error('Update appointment error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -228,7 +221,7 @@ router.delete('/:id', async (req, res) => {
 
     return res.json({ message: 'Appointment deleted' })
   } catch (error) {
-    console.error('Delete appointment error:', error)
+    logger.error('Delete appointment error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -253,35 +246,33 @@ router.patch('/doctor/:id/accept', async (req, res) => {
       data: { status: 'confirmed' },
     })
 
-    // ── Send "Appointment Accepted" notification ──
-    const emailData = appointmentAcceptedEmail({
-      patientName: appointment.patientName,
-      doctorOrService: appointment.doctorOrService,
-      appointmentDate: appointment.appointmentDate,
-      appointmentTime: appointment.appointmentTime,
-    })
-    const smsBody = appointmentAcceptedSMS({
-      patientName: appointment.patientName,
-      doctorOrService: appointment.doctorOrService,
-      appointmentDate: appointment.appointmentDate,
-      appointmentTime: appointment.appointmentTime,
-    })
-
-    notify({
-      userId: appointment.userId,
-      type: 'appointment_accepted',
-      channel: 'both',
-      appointmentId: appointment.id,
-      subject: emailData.subject,
-      body: smsBody,
-      html: emailData.html,
-      recipientEmail: appointment.email,
-      recipientPhone: appointment.contactNumber,
-    }).catch(err => console.error('[NOTIFY] Appointment accepted notification failed:', err.message))
+    // Notify the patient
+    sendNotification({
+      email: appointment.email,
+      subject: '✅ Appointment Confirmed — MediLink',
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#10B981,#059669);padding:24px;color:white;text-align:center;">
+            <h1 style="margin:0;font-size:24px;">✅ Appointment Confirmed</h1>
+          </div>
+          <div style="padding:24px;">
+            <p>Hello <strong>${appointment.patientName}</strong>,</p>
+            <p>Your appointment has been <strong style="color:#059669;">confirmed</strong> by your doctor.</p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+              <tr><td style="padding:8px;color:#6b7280;">Date</td><td style="padding:8px;font-weight:600;">${appointment.appointmentDate}</td></tr>
+              <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Time</td><td style="padding:8px;font-weight:600;">${appointment.appointmentTime}</td></tr>
+              <tr><td style="padding:8px;color:#6b7280;">Doctor / Service</td><td style="padding:8px;font-weight:600;">${appointment.doctorOrService || 'General'}</td></tr>
+            </table>
+            <p style="color:#6b7280;font-size:14px;">Please arrive 10 minutes early.</p>
+          </div>
+          <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af;">&copy; MediLink Healthcare</div>
+        </div>
+      `,
+    }).catch((err) => logger.error('Accept notification error:', err))
 
     return res.json({ message: 'Appointment confirmed', appointment })
   } catch (error) {
-    console.error('Accept appointment error:', error)
+    logger.error('Accept appointment error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -317,36 +308,34 @@ router.patch('/doctor/:id/reschedule', async (req, res) => {
       },
     })
 
-    // ── Send "Appointment Rescheduled" notification ──
-    const emailData = appointmentRescheduledEmail({
-      patientName: appointment.patientName,
-      doctorOrService: appointment.doctorOrService,
-      oldDate: existing.appointmentDate,
-      oldTime: existing.appointmentTime,
-      newDate: appointmentDate,
-      newTime: appointmentTime,
-    })
-    const smsBody = appointmentRescheduledSMS({
-      patientName: appointment.patientName,
-      newDate: appointmentDate,
-      newTime: appointmentTime,
-    })
-
-    notify({
-      userId: appointment.userId,
-      type: 'appointment_rescheduled',
-      channel: 'both',
-      appointmentId: appointment.id,
-      subject: emailData.subject,
-      body: smsBody,
-      html: emailData.html,
-      recipientEmail: appointment.email,
-      recipientPhone: appointment.contactNumber,
-    }).catch(err => console.error('[NOTIFY] Reschedule notification failed:', err.message))
+    // Notify the patient about rescheduling
+    sendNotification({
+      email: appointment.email,
+      subject: '📅 Appointment Rescheduled — MediLink',
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#F59E0B,#D97706);padding:24px;color:white;text-align:center;">
+            <h1 style="margin:0;font-size:24px;">📅 Appointment Rescheduled</h1>
+          </div>
+          <div style="padding:24px;">
+            <p>Hello <strong>${appointment.patientName}</strong>,</p>
+            <p>Your appointment has been <strong style="color:#D97706;">rescheduled</strong> by your doctor.</p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+              <tr><td style="padding:8px;color:#6b7280;">Previous Date</td><td style="padding:8px;text-decoration:line-through;color:#9ca3af;">${existing.appointmentDate} at ${existing.appointmentTime}</td></tr>
+              <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">New Date</td><td style="padding:8px;font-weight:600;color:#059669;">${appointmentDate}</td></tr>
+              <tr><td style="padding:8px;color:#6b7280;">New Time</td><td style="padding:8px;font-weight:600;color:#059669;">${appointmentTime}</td></tr>
+              <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Doctor / Service</td><td style="padding:8px;font-weight:600;">${appointment.doctorOrService || 'General'}</td></tr>
+            </table>
+            <p style="color:#6b7280;font-size:14px;">If this new time doesn't work for you, please log in to MediLink to request a change.</p>
+          </div>
+          <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af;">&copy; MediLink Healthcare</div>
+        </div>
+      `,
+    }).catch((err) => logger.error('Reschedule notification error:', err))
 
     return res.json({ message: 'Appointment rescheduled', appointment })
   } catch (error) {
-    console.error('Reschedule appointment error:', error)
+    logger.error('Reschedule appointment error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
