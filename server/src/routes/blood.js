@@ -1,7 +1,9 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 import { authenticate } from '../middleware/authMiddleware.js'
 
+const prisma = new PrismaClient()
 const router = express.Router()
 
 // ─── PUBLIC ROUTES ───
@@ -22,7 +24,7 @@ router.get('/donors', async (req, res) => {
 
     return res.json({ donors })
   } catch (error) {
-    console.error('List donors error:', error)
+    logger.error('List donors error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -48,7 +50,7 @@ router.post('/donors', authenticate, async (req, res) => {
 
     return res.status(201).json({ message: 'Registered as blood donor successfully!', donor })
   } catch (error) {
-    console.error('Create donor error:', error)
+    logger.error('Create donor error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -69,7 +71,7 @@ router.get('/requests', async (req, res) => {
 
     return res.json({ requests })
   } catch (error) {
-    console.error('List blood requests error:', error)
+    logger.error('List blood requests error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -96,7 +98,7 @@ router.post('/requests', authenticate, async (req, res) => {
 
     return res.status(201).json({ message: 'Blood request posted!', request })
   } catch (error) {
-    console.error('Create blood request error:', error)
+    logger.error('Create blood request error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -110,7 +112,7 @@ router.patch('/requests/:id/close', authenticate, async (req, res) => {
     })
     return res.json({ message: 'Request marked as fulfilled', request: updated })
   } catch (error) {
-    console.error('Close blood request error:', error)
+    logger.error('Close blood request error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
