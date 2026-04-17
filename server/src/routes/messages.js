@@ -1,28 +1,11 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import multer from 'multer'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import fs from 'fs'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 import { authenticate } from '../middleware/authMiddleware.js'
+import { upload, uploadToCloudinary } from '../services/upload.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
+const prisma = new PrismaClient()
 const router = express.Router()
-
-// Local file storage for chat attachments
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadsDir = path.join(__dirname, '../../uploads/messages')
-    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-    cb(null, uploadsDir)
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`)
-  }
-})
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }) // 10MB
 
 router.use(authenticate)
 
@@ -54,7 +37,7 @@ router.get('/conversations', async (req, res) => {
 
     return res.json({ conversations: enrichedConvos })
   } catch (error) {
-    console.error('List conversations error:', error)
+    logger.error('List conversations error:', error)
     return res.status(500).json({ message: 'Something went wrong. Please try again.' })
   }
 })
@@ -78,7 +61,7 @@ router.get('/:conversationId', async (req, res) => {
 
     return res.json({ messages })
   } catch (error) {
-    console.error('List messages error:', error)
+    logger.error('List messages error:', error)
     return res.status(500).json({ message: 'Something went wrong. Please try again.' })
   }
 })
@@ -100,10 +83,11 @@ router.post('/', upload.single('attachment'), async (req, res) => {
       conversation = await prisma.conversation.create({ data: { patientId, doctorId } })
     }
 
-    // Build a local URL for the uploaded file
-    let attachmentUrl = null
+    // Upload attachment to Cloudinary if provided
+    let fileUrl = null
     if (req.file) {
-      attachmentUrl = `/uploads/messages/${req.file.filename}`
+      const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype, 'medilink_chat')
+      fileUrl = result.secure_url
     }
 
     const message = await prisma.message.create({
@@ -111,16 +95,16 @@ router.post('/', upload.single('attachment'), async (req, res) => {
         content: content || 'File attachment',
         senderId: req.user.userId,
         conversationId: conversation.id,
-        hasAttachment: !!attachmentUrl,
-        attachmentUrl,
+        hasAttachment: !!fileUrl,
+        fileUrl,
       }
     })
 
     await prisma.conversation.update({ where: { id: conversation.id }, data: { updatedAt: new Date() } })
     return res.status(201).json({ message, conversationId: conversation.id })
   } catch (error) {
-    console.error('Send message error:', error)
-    return res.status(500).json({ message: 'Something went wrong.' })
+    logger.error('Send message error:', error)
+    return res.status(500).json({ message: error.message?.includes('allowed') ? error.message : 'Something went wrong.' })
   }
 })
 
