@@ -1,7 +1,9 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 import { authenticate } from '../middleware/authMiddleware.js'
 
+const prisma = new PrismaClient()
 const router = express.Router()
 
 router.use(authenticate)
@@ -18,6 +20,11 @@ router.get('/', async (req, res) => {
         phone: true,
         role: true,
         specialty: true,
+        dateOfBirth: true,
+        bloodGroup: true,
+        allergies: true,
+        emergencyContact: true,
+        avatarUrl: true,
         createdAt: true,
         workingHours: true,
       }
@@ -25,7 +32,7 @@ router.get('/', async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' })
     return res.json({ user })
   } catch (error) {
-    console.error('Get profile error:', error)
+    logger.error('Get profile error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -33,25 +40,30 @@ router.get('/', async (req, res) => {
 // PUT /api/profile — update current user's profile
 router.put('/', async (req, res) => {
   try {
-    const { fullName, phone, specialty, workingHours } = req.body
+    const { fullName, phone, dateOfBirth, bloodGroup, allergies, emergencyContact, workingHours } = req.body
 
     const updated = await prisma.user.update({
       where: { id: req.user.userId },
       data: {
         ...(fullName && { fullName }),
         ...(phone !== undefined && { phone }),
-        ...(specialty !== undefined && { specialty }),
+        ...(dateOfBirth !== undefined && { dateOfBirth }),
+        ...(bloodGroup !== undefined && { bloodGroup }),
+        ...(allergies !== undefined && { allergies }),
+        ...(emergencyContact !== undefined && { emergencyContact }),
         ...(workingHours !== undefined && { workingHours: JSON.stringify(workingHours) }),
       },
       select: {
         id: true, fullName: true, email: true, phone: true,
-        role: true, specialty: true, workingHours: true,
+        role: true, specialty: true, dateOfBirth: true,
+        bloodGroup: true, allergies: true, emergencyContact: true, avatarUrl: true,
+        workingHours: true
       }
     })
 
     return res.json({ message: 'Profile updated successfully', user: updated })
   } catch (error) {
-    console.error('Update profile error:', error)
+    logger.error('Update profile error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -82,14 +94,47 @@ router.get('/patient/:id', async (req, res) => {
         fullName: true,
         email: true,
         phone: true,
+        dateOfBirth: true,
+        bloodGroup: true,
+        allergies: true,
+        emergencyContact: true,
+        avatarUrl: true,
       }
     })
 
     if (!patient) return res.status(404).json({ message: 'Patient not found' })
     return res.json({ profile: patient })
   } catch (error) {
-    console.error('Doctor fetch patient profile error:', error)
+    logger.error('Doctor fetch patient profile error:', error)
     return res.status(500).json({ message: 'Internal server error' })
+  }
+})
+
+// GET /api/profile/admin/stats — Admin-only platform statistics
+router.get('/admin/stats', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ message: 'Unauthorized' })
+
+    const [patients, doctors, appointments, emergencies, bloodDonors, bloodRequests] = await Promise.all([
+      prisma.user.count({ where: { role: 'patient' } }),
+      prisma.user.count({ where: { role: 'doctor' } }),
+      prisma.appointment.count(),
+      prisma.emergencyRequest.count(),
+      prisma.bloodDonor.count(),
+      prisma.bloodRequest.count({ where: { status: 'open' } }),
+    ])
+
+    const recentPatients = await prisma.user.findMany({
+      where: { role: 'patient' },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: { id: true, fullName: true, email: true, createdAt: true }
+    })
+
+    return res.json({ stats: { patients, doctors, appointments, emergencies, bloodDonors, bloodRequests }, recentPatients })
+  } catch (error) {
+    logger.error('Admin stats error:', error)
+    return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
 
