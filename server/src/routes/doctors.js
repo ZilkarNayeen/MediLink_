@@ -1,6 +1,8 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 
+const prisma = new PrismaClient()
 const router = express.Router()
 
 // ─── GET /api/doctors?search=...&specialty=... ─── Search doctors by name or specialty
@@ -34,7 +36,7 @@ router.get('/', async (req, res) => {
 
     return res.json({ doctors })
   } catch (error) {
-    console.error('List doctors error:', error)
+    logger.error('List doctors error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
