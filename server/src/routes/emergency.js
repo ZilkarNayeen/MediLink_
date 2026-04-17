@@ -1,7 +1,9 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 import { authenticate } from '../middleware/authMiddleware.js'
 
+const prisma = new PrismaClient()
 const router = express.Router()
 
 router.use(authenticate)
@@ -23,16 +25,18 @@ router.post('/', async (req, res) => {
       }
     })
 
+    // In a real world app, this would dispatch WebSocket events to hospital admins
+    // For now, logging will mimic the dispatch process.
     console.log(`EMERGENCY SOS RECEIVED: User ${req.user.userId} at [${latitude}, ${longitude}]`)
 
     return res.status(201).json({ message: 'Emergency SOS Dispatched successfully!', emergencyId: emergency.id })
   } catch (error) {
-    console.error('Create emergency error:', error)
+    logger.error('Create emergency error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
 
-// ─── GET /api/emergency/active ─── Admin views all pending SOS signals
+// ─── GET /api/emergency/active ─── (Admin/Hospital feature to view dispatched ambulances)
 router.get('/active', async (req, res) => {
   try {
     if (req.user.role === 'patient') {
@@ -46,12 +50,12 @@ router.get('/active', async (req, res) => {
 
     return res.json({ emergencies })
   } catch (error) {
-    console.error('List emergencies error:', error)
+    logger.error('List emergencies error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
 
-// ─── POST /api/emergency/:id/resolve ─── Admin acknowledges & resolves an SOS
+// ─── POST /api/emergency/:id/resolve ─── (Admin feature to acknowledge/resolve SOS)
 router.post('/:id/resolve', async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -67,40 +71,7 @@ router.post('/:id/resolve', async (req, res) => {
 
     return res.json({ message: 'Emergency marked as resolved', emergency })
   } catch (error) {
-    console.error('Resolve emergency error:', error)
-    return res.status(500).json({ message: error?.message || 'Internal server error' })
-  }
-})
-
-// ─── GET /api/emergency/stats ─── Admin stats: count of emergencies
-router.get('/stats', async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Unauthorized' })
-    }
-
-    const [patients, doctors, appointments, emergencies, bloodDonors, bloodRequests] = await Promise.all([
-      prisma.user.count({ where: { role: 'patient' } }),
-      prisma.user.count({ where: { role: 'doctor' } }),
-      prisma.appointment.count(),
-      prisma.emergencyRequest.count(),
-      prisma.bloodDonor.count(),
-      prisma.bloodRequest.count({ where: { status: 'open' } }),
-    ])
-
-    const recentPatients = await prisma.user.findMany({
-      where: { role: 'patient' },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: { id: true, fullName: true, email: true, createdAt: true }
-    })
-
-    return res.json({
-      stats: { patients, doctors, appointments, emergencies, bloodDonors, bloodRequests },
-      recentPatients
-    })
-  } catch (error) {
-    console.error('Stats error:', error)
+    logger.error('Resolve emergency error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
