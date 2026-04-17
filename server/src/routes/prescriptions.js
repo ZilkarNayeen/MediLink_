@@ -1,35 +1,14 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 import { authenticate } from '../middleware/authMiddleware.js'
-import { notify } from '../services/notificationService.js'
-import { newPrescriptionEmail } from '../services/emailService.js'
+import { sendNotification } from '../services/notificationService.js'
+import { prescriptionEmailTemplate } from '../services/prescriptionTemplates.js'
 
+const prisma = new PrismaClient()
 const router = express.Router()
 
 router.use(authenticate)
-
-// ── Helper: generate alertTimes from frequency string ──
-function generateAlertTimes(frequency) {
-  const f = (frequency || '').toLowerCase()
-  if (f.includes('once') || f.includes('1') || f.includes('daily')) {
-    return ['09:00']
-  }
-  if (f.includes('twice') || f.includes('2')) {
-    return ['09:00', '21:00']
-  }
-  if (f.includes('three') || f.includes('3') || f.includes('thrice')) {
-    return ['08:00', '14:00', '21:00']
-  }
-  if (f.includes('four') || f.includes('4')) {
-    return ['08:00', '12:00', '17:00', '22:00']
-  }
-  if (f.includes('every') && f.includes('hour')) {
-    // Generate every 2 hours
-    return ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00']
-  }
-  // Default: once daily
-  return ['09:00']
-}
 
 // ─── POST /api/prescriptions ─── Generate a prescription (Doctor only)
 router.post('/', async (req, res) => {
@@ -61,16 +40,13 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ message: 'Appointment not found' })
     }
 
-    // Auto-generate alert times from frequency
-    const alertTimes = generateAlertTimes(frequency)
-
     // Create the prescription
     const prescription = await prisma.prescription.create({
       data: {
         medicationName,
         dosage,
         frequency,
-        alertTimes,
+        alertTimes: [], // Will implement later
         startDate,
         endDate: endDate || null,
         appointmentId,
@@ -78,15 +54,10 @@ router.post('/', async (req, res) => {
       }
     })
 
-    // ── Notify patient about new prescription ──
-    const doctor = await prisma.user.findUnique({
-      where: { id: req.user.userId },
-      select: { fullName: true },
-    })
-
-    const emailData = newPrescriptionEmail({
-      patientName: appointment.user.fullName,
-      doctorName: doctor?.fullName || 'Your Doctor',
+    // Prepare and send the email
+    const { subject, html } = prescriptionEmailTemplate({
+      patientName: appointment.patientName,
+      doctorOrService: appointment.doctorOrService,
       medicationName,
       dosage,
       frequency,
@@ -94,21 +65,15 @@ router.post('/', async (req, res) => {
       endDate,
     })
 
-    notify({
-      userId: appointment.userId,
-      type: 'new_prescription',
-      channel: 'both',
-      appointmentId,
-      subject: emailData.subject,
-      body: `MediLink: New prescription — ${medicationName} (${dosage}), ${frequency}. Start: ${startDate}. Check MediLink for details.`,
-      html: emailData.html,
-      recipientEmail: appointment.user.email,
-      recipientPhone: appointment.user.phone,
-    }).catch(err => console.error('[NOTIFY] Prescription notification failed:', err.message))
+    sendNotification({
+      email: appointment.email,
+      subject,
+      html
+    }).catch(err => logger.error('Prescription notification error:', err))
 
     return res.status(201).json({ message: 'Prescription generated successfully', prescription })
   } catch (error) {
-    console.error('Create prescription error:', error)
+    logger.error('Create prescription error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -124,7 +89,7 @@ router.get('/patient', async (req, res) => {
 
     return res.json({ prescriptions })
   } catch (error) {
-    console.error('List prescriptions error:', error)
+    logger.error('List prescriptions error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -139,7 +104,7 @@ router.get('/appointment/:id', async (req, res) => {
 
     return res.json({ prescriptions })
   } catch (error) {
-    console.error('List appointment prescriptions error:', error)
+    logger.error('List appointment prescriptions error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
