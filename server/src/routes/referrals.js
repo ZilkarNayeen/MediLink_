@@ -1,7 +1,9 @@
+import logger from '../utils/logger.js'
 import express from 'express'
-import prisma from '../lib/prisma.js'
+import { PrismaClient } from '../../generated/prisma/index.js'
 import { authenticate } from '../middleware/authMiddleware.js'
 
+const prisma = new PrismaClient()
 const router = express.Router()
 
 router.use(authenticate)
@@ -43,7 +45,7 @@ router.post('/', async (req, res) => {
       referral
     })
   } catch (error) {
-    console.error('Create referral error:', error)
+    logger.error('Create referral error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
@@ -90,7 +92,7 @@ router.get('/', async (req, res) => {
 
     return res.json({ referrals: enriched })
   } catch (error) {
-    console.error('List referrals error:', error)
+    logger.error('List referrals error:', error)
     return res.status(500).json({ message: error?.message || 'Internal server error' })
   }
 })
