@@ -66,6 +66,8 @@ function AdminDashboard() {
     { icon: '👨‍⚕️', label: 'Total Doctors', value: stats.doctors, color: '#059669' },
     { icon: '📅', label: 'Appointments', value: stats.appointments, color: '#9333ea' },
     { icon: '🚨', label: 'SOS Dispatches', value: stats.emergencies, color: '#DC2626' },
+    { icon: '🩸', label: 'Blood Donors', value: stats.bloodDonors, color: '#e11d48' },
+    { icon: '📋', label: 'Open Blood Requests', value: stats.bloodRequests, color: '#D97706' },
   ] : []
 
   return (

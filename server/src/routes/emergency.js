@@ -79,11 +79,13 @@ router.get('/stats', async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized' })
     }
 
-    const [patients, doctors, appointments, emergencies] = await Promise.all([
+    const [patients, doctors, appointments, emergencies, bloodDonors, bloodRequests] = await Promise.all([
       prisma.user.count({ where: { role: 'patient' } }),
       prisma.user.count({ where: { role: 'doctor' } }),
       prisma.appointment.count(),
       prisma.emergencyRequest.count(),
+      prisma.bloodDonor.count(),
+      prisma.bloodRequest.count({ where: { status: 'open' } }),
     ])
 
     const recentPatients = await prisma.user.findMany({
@@ -94,7 +96,7 @@ router.get('/stats', async (req, res) => {
     })
 
     return res.json({
-      stats: { patients, doctors, appointments, emergencies },
+      stats: { patients, doctors, appointments, emergencies, bloodDonors, bloodRequests },
       recentPatients
     })
   } catch (error) {

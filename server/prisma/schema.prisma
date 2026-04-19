@@ -120,3 +120,25 @@ model EmergencyRequest {
 
   userId      String   @db.ObjectId
 }
+
+model BloodDonor {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  fullName    String
+  bloodGroup  String
+  phone       String
+  city        String
+  lastDonated DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model BloodRequest {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientName   String
+  bloodGroup    String
+  hospital      String
+  city          String
+  phone         String
+  urgency       String   @default("regular") // regular, urgent, emergency
+  status        String   @default("open")
+  createdAt     DateTime @default(now())
+}
