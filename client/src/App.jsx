@@ -3,10 +3,13 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import Dashboard from './pages/Dashboard'
 import MedicalRecords from './pages/MedicalRecords'
+import ConsultationHistory from './pages/ConsultationHistory'
 import BookAppointment from './pages/BookAppointment'
 import BloodBank from './pages/BloodBank'
 import AdminLoginPage from './pages/AdminLoginPage'
 import AdminDashboard from './pages/AdminDashboard'
+import DoctorDashboard from './pages/DoctorDashboard'
+import DoctorSignupPage from './pages/DoctorSignupPage'
 import './App.css'
 
 function App() {
@@ -15,11 +18,14 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/consultation-history" element={<ConsultationHistory />} />
       <Route path="/records" element={<MedicalRecords />} />
       <Route path="/appointments" element={<BookAppointment />} />
       <Route path="/blood-bank" element={<BloodBank />} />
       <Route path="/admin" element={<AdminLoginPage />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+      <Route path="/doctor/signup" element={<DoctorSignupPage />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

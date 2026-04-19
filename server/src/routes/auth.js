@@ -57,6 +57,43 @@ router.post('/signup', async (req, res) => {
   }
 })
 
+router.post('/doctor/signup', async (req, res) => {
+  try {
+    const { fullName, email, password, specialty } = req.body
+
+    if (!fullName || !email || !password || !specialty) {
+      return res.status(400).json({ message: 'All fields are required' })
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email is already registered' })
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10)
+
+    const user = await prisma.user.create({
+      data: {
+        fullName,
+        email,
+        passwordHash,
+        role: 'doctor',
+        specialty,
+      },
+    })
+
+    return res.status(201).json({ message: 'Doctor account created successfully' })
+  } catch (error) {
+    console.error('Doctor signup error:', error)
+    return res
+      .status(500)
+      .json({ message: error?.message || 'Internal server error' })
+  }
+})
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body

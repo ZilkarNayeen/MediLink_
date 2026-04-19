@@ -27,9 +27,16 @@ function LoginPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.message || 'Login failed')
       if (data.token) {
-        localStorage.setItem('medilink_token', data.token)
-        if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
-        navigate('/dashboard') // Go to dashboard after login
+        if (data.user?.role === 'doctor') {
+          localStorage.setItem('medilink_doctor_token', data.token)
+          localStorage.setItem('medilink_doctor', JSON.stringify(data.user))
+          localStorage.setItem('medilink_doctor_name', data.user?.fullName)
+          navigate('/doctor/dashboard')
+        } else {
+          localStorage.setItem('medilink_token', data.token)
+          if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
+          navigate('/dashboard') // Go to dashboard after login
+        }
       }
     } catch (err) {
       setError(err.message)
@@ -90,6 +97,9 @@ function LoginPage() {
 
         <p className="auth-footer">
           Don't have an account? <Link to="/signup">Create one</Link>
+        </p>
+        <p className="auth-footer" style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+          Are you a medical professional? <Link to="/doctor/signup">Register as a Doctor</Link>
         </p>
 
         <div className="auth-features">
