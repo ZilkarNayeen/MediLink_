@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { API_BASE_URL } from '../config.js'
 import { Navbar, BottomNav } from '../components/Navbar.jsx'
 import './Dashboard.css'
 
 function Dashboard() {
   const [sosStatus, setSosStatus] = useState('')
+  const [sosPhase, setSosPhase] = useState('') // 'locating' | 'dispatching' | 'done' | 'error'
+  const [stats, setStats] = useState({ appointments: 0, records: 0 })
 
   const userStr = localStorage.getItem('medilink_user')
   const user = userStr ? JSON.parse(userStr) : null
+  const token = localStorage.getItem('medilink_token')
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -16,8 +20,52 @@ function Dashboard() {
     return 'Good evening'
   }
 
-  // Placeholder stats (no API calls)
-  const stats = { appointments: 0, records: 0 }
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/appointments`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await res.json()
+        const apts = data.appointments || []
+        setStats(prev => ({ ...prev, appointments: apts.length }))
+      } catch {}
+    }
+    if (token) fetchStats()
+  }, [])
+
+  // ─── SOS Emergency Dispatch ───
+  const handleSOS = () => {
+    if (!navigator.geolocation) {
+      setSosStatus('Geolocation is not supported by your browser.')
+      setSosPhase('error')
+      return
+    }
+    setSosStatus('📍 Locating you…')
+    setSosPhase('locating')
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords
+      setSosStatus('🚑 Dispatching ambulance…')
+      setSosPhase('dispatching')
+      try {
+        const res = await fetch(`${API_BASE_URL}/emergency`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ latitude, longitude })
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message)
+        setSosStatus('✅ Ambulance dispatched to your location!')
+        setSosPhase('done')
+      } catch (err) {
+        setSosStatus('⚠️ Failed to dispatch: ' + err.message)
+        setSosPhase('error')
+      }
+    }, () => {
+      setSosStatus('⚠️ Unable to get your location. Please enable location services.')
+      setSosPhase('error')
+    })
+  }
 
   const quickActions = [
     {
@@ -58,7 +106,7 @@ function Dashboard() {
     },
     {
       isButton: true,
-      onClick: () => setSosStatus('🚨 SOS feature — coming soon'),
+      onClick: handleSOS,
       icon: '🚨',
       iconClass: 'red',
       title: 'SOS Ambulance',
@@ -99,9 +147,17 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* SOS banner */}
+      {/* SOS Status Banner */}
       {sosStatus && (
-        <div className="dashboard-sos-banner">{sosStatus}</div>
+        <div className={`dashboard-sos-banner ${sosPhase === 'done' ? 'sos-success' : ''} ${sosPhase === 'locating' || sosPhase === 'dispatching' ? 'sos-active' : ''}`}>
+          {(sosPhase === 'locating' || sosPhase === 'dispatching') && (
+            <span className="sos-spinner"></span>
+          )}
+          {sosStatus}
+          {sosPhase === 'done' && (
+            <button className="sos-dismiss-btn" onClick={() => { setSosStatus(''); setSosPhase(''); }}>✕</button>
+          )}
+        </div>
       )}
 
       {/* ── Quick Actions ── */}

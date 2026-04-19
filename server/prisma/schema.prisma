@@ -110,3 +110,13 @@ model MedicalRecord {
   patientId     String   @db.ObjectId
   patient       User     @relation(fields: [patientId], references: [id])
 }
+
+model EmergencyRequest {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  latitude    Float
+  longitude   Float
+  status      String   @default("pending") // pending, dispatched, resolved
+  createdAt   DateTime @default(now())
+
+  userId      String   @db.ObjectId
+}
