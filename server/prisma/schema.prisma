@@ -15,6 +15,7 @@ model User {
   passwordHash     String
   phone            String?
   role             String            @default("patient")
+  specialty        String?
   createdAt        DateTime          @default(now())
   appointments     Appointment[]
   followUpRequests FollowUpRequest[]

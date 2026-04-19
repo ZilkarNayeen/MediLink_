@@ -1,0 +1,177 @@
+/* ================================================================
+   Book Appointment — Stepper UI
+   ================================================================ */
+
+.booking-page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: var(--bottom-nav-height);
+  padding-top: var(--navbar-height);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 769px) {
+  .booking-page { padding-bottom: 0; }
+}
+
+.booking-container {
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 2rem 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.booking-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.booking-title {
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.booking-sub {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+/* ── Stepper ── */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: 2.5rem;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.stepper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+  transform: translateY(-50%);
+}
+
+.step {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  position: relative;
+  z-index: 1;
+  transition: all var(--transition);
+}
+
+.step.active {
+  background: var(--surface);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(0,87,183,0.1);
+}
+
+.step.completed {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+/* ── Card ── */
+.booking-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  box-shadow: var(--shadow-sm);
+  animation: ml-fadeUp 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.step-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Doctor search wrapper ── */
+.doctor-search-wrapper { position: relative; }
+
+.doctor-input-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.doctor-search-icon {
+  position: absolute;
+  right: 12px;
+  color: var(--text-light);
+  display: flex;
+}
+
+.doctor-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.doctor-dropdown-item {
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.doctor-dropdown-item:last-child { border-bottom: none; }
+.doctor-dropdown-item:hover, .doctor-dropdown-item.highlighted { background: var(--surface-3); }
+
+.doctor-dropdown-item .doctor-name { font-weight: 600; color: var(--text); font-size: 0.9rem; }
+.doctor-dropdown-item .doctor-specialty { font-size: 0.8rem; color: var(--primary); font-weight: 500; }
+
+.doctor-empty { padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+
+/* ── Buttons ── */
+.stepper-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
+
+.stepper-actions.justify-end { justify-content: flex-end; }

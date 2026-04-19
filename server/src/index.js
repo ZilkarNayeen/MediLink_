@@ -6,6 +6,8 @@ import fs from 'fs'
 import { fileURLToPath } from 'url'
 import authRoutes from './routes/auth.js'
 import recordsRouter from './routes/records.js'
+import appointmentsRouter from './routes/appointments.js'
+import doctorsRouter from './routes/doctors.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -25,6 +27,8 @@ app.use('/uploads', express.static(uploadsPath))
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/records', recordsRouter)
+app.use('/api/appointments', appointmentsRouter)
+app.use('/api/doctors', doctorsRouter)
 
 app.get('/', (req, res) => {
   res.send('MediLink API is running...')
