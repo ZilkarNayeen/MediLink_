@@ -16,6 +16,7 @@ model User {
   phone            String?
   role             String            @default("patient")
   specialty        String?
+  workingHours     String?
   createdAt        DateTime          @default(now())
   appointments     Appointment[]
   followUpRequests FollowUpRequest[]
@@ -141,13 +142,4 @@ model Message {
   createdAt      DateTime     @default(now())
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-}
-
-model Referral {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  referringDocId   String   @db.ObjectId
-  referredToDocId  String   @db.ObjectId
-  patientId        String   @db.ObjectId
-  notes            String
-  createdAt        DateTime @default(now())
 }

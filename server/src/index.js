@@ -16,6 +16,7 @@ import followUpsRouter from './routes/followups.js'
 import messagesRouter from './routes/messages.js'
 import bloodRouter from './routes/blood.js'
 import referralsRouter from './routes/referrals.js'
+import profileRouter from './routes/profile.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -48,6 +49,7 @@ app.use('/api/follow-ups', followUpsRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/blood', bloodRouter)
 app.use('/api/referrals', referralsRouter)
+app.use('/api/profile', profileRouter)
 
 app.get('/', (req, res) => {
   res.send('MediLink API is running...')

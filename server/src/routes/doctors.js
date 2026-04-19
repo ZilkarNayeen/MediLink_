@@ -26,6 +26,7 @@ router.get('/', async (req, res) => {
         fullName: true,
         email: true,
         specialty: true,
+        workingHours: true,
       },
       orderBy: { fullName: 'asc' },
       take: 20,
