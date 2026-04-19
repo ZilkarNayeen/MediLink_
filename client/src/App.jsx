@@ -10,6 +10,7 @@ import AdminLoginPage from './pages/AdminLoginPage'
 import AdminDashboard from './pages/AdminDashboard'
 import DoctorDashboard from './pages/DoctorDashboard'
 import DoctorSignupPage from './pages/DoctorSignupPage'
+import Messages from './pages/Messages'
 import './App.css'
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
       <Route path="/doctor/signup" element={<DoctorSignupPage />} />
+      <Route path="/messages" element={<Messages />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
