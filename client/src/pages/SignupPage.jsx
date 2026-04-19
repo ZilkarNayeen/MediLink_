@@ -89,6 +89,9 @@ function SignupPage() {
         <p className="auth-footer">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>
+        <p className="auth-footer" style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+          Are you a medical professional? <Link to="/doctor/signup">Register as a Doctor</Link>
+        </p>
 
         <div className="auth-features">
           <div className="auth-feature-item"><span className="auth-feature-icon">🔒</span><span>Secure</span></div>
