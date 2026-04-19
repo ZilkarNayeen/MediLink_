@@ -234,3 +234,123 @@
   gap: 0.75rem;
   margin-top: 2rem;
 }
+
+/* ── Header Row ── */
+.history-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.history-header-row .history-title {
+  margin-bottom: 0.25rem;
+}
+
+.history-header-row .history-subtitle {
+  margin-bottom: 0;
+}
+
+.history-notif-link {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  background: var(--primary-light, rgba(99, 102, 241, 0.1));
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.history-notif-link:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Follow-Up Status Tracker ── */
+.history-followup-tracker {
+  margin: 0.75rem 0;
+  padding: 12px;
+  background: var(--surface-3, #f8fafc);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.history-followup-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.history-followup-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+
+.history-followup-status:last-child {
+  margin-bottom: 0;
+}
+
+.history-followup-status.pending {
+  background: rgba(245, 158, 11, 0.06);
+  border-left: 3px solid #f59e0b;
+}
+
+.history-followup-status.approved {
+  background: rgba(16, 185, 129, 0.06);
+  border-left: 3px solid #10b981;
+}
+
+.history-followup-status.rejected {
+  background: rgba(239, 68, 68, 0.06);
+  border-left: 3px solid #ef4444;
+}
+
+.history-followup-icon {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.history-followup-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history-followup-reason {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.history-followup-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.history-followup-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}

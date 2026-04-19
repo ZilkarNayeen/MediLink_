@@ -1,6 +1,16 @@
 import express from 'express'
 import prisma from '../lib/prisma.js'
 import { authenticate } from '../middleware/authMiddleware.js'
+import { notify } from '../services/notificationService.js'
+import {
+  followUpRequestEmail,
+  followUpApprovedEmail,
+  followUpRejectedEmail,
+} from '../services/emailService.js'
+import {
+  followUpApprovedSMS,
+  followUpRejectedSMS,
+} from '../services/smsService.js'
 
 const router = express.Router()
 
@@ -38,14 +48,31 @@ router.post('/', async (req, res) => {
       },
     })
 
-    // Notify the doctor via email
+    // ── Notify the doctor via email ──
     if (originalAppointment.doctorOrService) {
       const doctor = await prisma.user.findFirst({
         where: { fullName: originalAppointment.doctorOrService, role: 'doctor' },
       })
 
       if (doctor) {
-        console.log(`Sending email to doctor ${doctor.email} about patient ${originalAppointment.patientName}'s follow-up request.`)
+        const emailData = followUpRequestEmail({
+          patientName: originalAppointment.patientName,
+          reason,
+          preferredDate,
+          preferredTime,
+          originalDate: originalAppointment.appointmentDate,
+        })
+
+        notify({
+          userId: doctor.id,
+          type: 'follow_up_request',
+          channel: 'email',
+          appointmentId,
+          subject: emailData.subject,
+          body: `Follow-up request from ${originalAppointment.patientName}: ${reason}`,
+          html: emailData.html,
+          recipientEmail: doctor.email,
+        }).catch(err => console.error('[NOTIFY] Follow-up request to doctor failed:', err.message))
       }
     }
 
@@ -115,8 +142,32 @@ router.patch('/:id/approve', async (req, res) => {
       include: { patient: true, appointment: true },
     })
 
-    // Log the approval
-    console.log(`Follow-up approved for patient: ${followUp.patient.fullName}`)
+    // ── Notify patient of approval ──
+    const doctor = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { fullName: true },
+    })
+
+    const doctorName = doctor?.fullName || 'Your Doctor'
+
+    const emailData = followUpApprovedEmail({
+      patientName: followUp.patient.fullName,
+      doctorName,
+    })
+    const smsBody = followUpApprovedSMS({
+      patientName: followUp.patient.fullName,
+      doctorName,
+    })
+
+    notify({
+      userId: followUp.patientId,
+      type: 'follow_up_approved',
+      channel: 'both',
+      appointmentId: followUp.appointmentId,
+      subject: emailData.subject,
+      body: smsBody,
+      html: emailData.html,
+    }).catch(err => console.error('[NOTIFY] Follow-up approved notification failed:', err.message))
 
     return res.json({ message: 'Follow-up approved', followUp })
   } catch (error) {
@@ -133,6 +184,33 @@ router.patch('/:id/reject', async (req, res) => {
       data: { status: 'rejected' },
       include: { patient: true, appointment: true },
     })
+
+    // ── Notify patient of rejection ──
+    const doctor = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { fullName: true },
+    })
+
+    const doctorName = doctor?.fullName || 'Your Doctor'
+
+    const emailData = followUpRejectedEmail({
+      patientName: followUp.patient.fullName,
+      doctorName,
+    })
+    const smsBody = followUpRejectedSMS({
+      patientName: followUp.patient.fullName,
+      doctorName,
+    })
+
+    notify({
+      userId: followUp.patientId,
+      type: 'follow_up_rejected',
+      channel: 'both',
+      appointmentId: followUp.appointmentId,
+      subject: emailData.subject,
+      body: smsBody,
+      html: emailData.html,
+    }).catch(err => console.error('[NOTIFY] Follow-up rejected notification failed:', err.message))
 
     return res.json({ message: 'Follow-up rejected', followUp })
   } catch (error) {

@@ -21,6 +21,7 @@ model User {
   appointments     Appointment[]
   followUpRequests FollowUpRequest[]
   prescriptions    Prescription[]
+  notificationPref String            @default("email")
   notifications    Notification[]
   medicalRecords   MedicalRecord[]
 }
@@ -90,6 +91,7 @@ model Notification {
   subject String
   body    String
   sentAt  DateTime @default(now())
+  read    Boolean  @default(false)
   success Boolean  @default(true)
   errorMsg String?
 

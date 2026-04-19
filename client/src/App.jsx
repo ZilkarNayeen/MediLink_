@@ -11,6 +11,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import DoctorDashboard from './pages/DoctorDashboard'
 import DoctorSignupPage from './pages/DoctorSignupPage'
 import Messages from './pages/Messages'
+import NotificationCenter from './pages/NotificationCenter'
 import './App.css'
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
       <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
       <Route path="/doctor/signup" element={<DoctorSignupPage />} />
       <Route path="/messages" element={<Messages />} />
+      <Route path="/notifications" element={<NotificationCenter />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

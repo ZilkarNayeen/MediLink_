@@ -1,6 +1,17 @@
 import express from 'express'
 import prisma from '../lib/prisma.js'
 import { authenticate } from '../middleware/authMiddleware.js'
+import { notify } from '../services/notificationService.js'
+import {
+  appointmentConfirmationEmail,
+  appointmentAcceptedEmail,
+  appointmentRescheduledEmail,
+} from '../services/emailService.js'
+import {
+  appointmentConfirmationSMS,
+  appointmentAcceptedSMS,
+  appointmentRescheduledSMS,
+} from '../services/smsService.js'
 
 const router = express.Router()
 
@@ -43,6 +54,32 @@ router.post('/', async (req, res) => {
         userId: req.user.userId,
       },
     })
+
+    // ── Send Appointment Confirmation (Email + SMS) ──
+    const emailData = appointmentConfirmationEmail({
+      patientName,
+      doctorOrService,
+      appointmentDate,
+      appointmentTime,
+    })
+    const smsBody = appointmentConfirmationSMS({
+      patientName,
+      doctorOrService,
+      appointmentDate,
+      appointmentTime,
+    })
+
+    notify({
+      userId: req.user.userId,
+      type: 'appointment_confirmation',
+      channel: 'both',
+      appointmentId: appointment.id,
+      subject: emailData.subject,
+      body: smsBody,
+      html: emailData.html,
+      recipientEmail: email,
+      recipientPhone: contactNumber,
+    }).catch(err => console.error('[NOTIFY] Appointment confirmation failed:', err.message))
 
     return res.status(201).json({ message: 'Appointment created', appointment })
   } catch (error) {
@@ -216,6 +253,32 @@ router.patch('/doctor/:id/accept', async (req, res) => {
       data: { status: 'confirmed' },
     })
 
+    // ── Send "Appointment Accepted" notification ──
+    const emailData = appointmentAcceptedEmail({
+      patientName: appointment.patientName,
+      doctorOrService: appointment.doctorOrService,
+      appointmentDate: appointment.appointmentDate,
+      appointmentTime: appointment.appointmentTime,
+    })
+    const smsBody = appointmentAcceptedSMS({
+      patientName: appointment.patientName,
+      doctorOrService: appointment.doctorOrService,
+      appointmentDate: appointment.appointmentDate,
+      appointmentTime: appointment.appointmentTime,
+    })
+
+    notify({
+      userId: appointment.userId,
+      type: 'appointment_accepted',
+      channel: 'both',
+      appointmentId: appointment.id,
+      subject: emailData.subject,
+      body: smsBody,
+      html: emailData.html,
+      recipientEmail: appointment.email,
+      recipientPhone: appointment.contactNumber,
+    }).catch(err => console.error('[NOTIFY] Appointment accepted notification failed:', err.message))
+
     return res.json({ message: 'Appointment confirmed', appointment })
   } catch (error) {
     console.error('Accept appointment error:', error)
@@ -253,6 +316,33 @@ router.patch('/doctor/:id/reschedule', async (req, res) => {
         reminderSent: false, // reset so the reminder fires again for the new date
       },
     })
+
+    // ── Send "Appointment Rescheduled" notification ──
+    const emailData = appointmentRescheduledEmail({
+      patientName: appointment.patientName,
+      doctorOrService: appointment.doctorOrService,
+      oldDate: existing.appointmentDate,
+      oldTime: existing.appointmentTime,
+      newDate: appointmentDate,
+      newTime: appointmentTime,
+    })
+    const smsBody = appointmentRescheduledSMS({
+      patientName: appointment.patientName,
+      newDate: appointmentDate,
+      newTime: appointmentTime,
+    })
+
+    notify({
+      userId: appointment.userId,
+      type: 'appointment_rescheduled',
+      channel: 'both',
+      appointmentId: appointment.id,
+      subject: emailData.subject,
+      body: smsBody,
+      html: emailData.html,
+      recipientEmail: appointment.email,
+      recipientPhone: appointment.contactNumber,
+    }).catch(err => console.error('[NOTIFY] Reschedule notification failed:', err.message))
 
     return res.json({ message: 'Appointment rescheduled', appointment })
   } catch (error) {

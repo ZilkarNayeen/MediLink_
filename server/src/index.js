@@ -17,6 +17,8 @@ import messagesRouter from './routes/messages.js'
 import bloodRouter from './routes/blood.js'
 import referralsRouter from './routes/referrals.js'
 import profileRouter from './routes/profile.js'
+import notificationsRouter from './routes/notifications.js'
+import { startScheduler } from './jobs/scheduler.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -50,6 +52,7 @@ app.use('/api/messages', messagesRouter)
 app.use('/api/blood', bloodRouter)
 app.use('/api/referrals', referralsRouter)
 app.use('/api/profile', profileRouter)
+app.use('/api/notifications', notificationsRouter)
 
 app.get('/', (req, res) => {
   res.send('MediLink API is running...')
@@ -81,4 +84,5 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
+  startScheduler()
 })
