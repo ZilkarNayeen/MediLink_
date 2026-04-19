@@ -120,3 +120,24 @@ model EmergencyRequest {
 
   userId      String   @db.ObjectId
 }
+
+model Conversation {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  patientId String    @db.ObjectId
+  doctorId  String    @db.ObjectId
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  content        String
+  senderId       String       @db.ObjectId
+  hasAttachment  Boolean      @default(false)
+  attachmentUrl  String?
+  createdAt      DateTime     @default(now())
+
+  conversationId String       @db.ObjectId
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+}
