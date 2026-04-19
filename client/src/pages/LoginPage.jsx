@@ -27,6 +27,13 @@ function LoginPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.message || 'Login failed')
       if (data.token) {
+        // Clear ALL old tokens first to prevent stale token conflicts
+        localStorage.removeItem('medilink_token')
+        localStorage.removeItem('medilink_user')
+        localStorage.removeItem('medilink_doctor_token')
+        localStorage.removeItem('medilink_doctor')
+        localStorage.removeItem('medilink_doctor_name')
+
         if (data.user?.role === 'doctor') {
           localStorage.setItem('medilink_doctor_token', data.token)
           localStorage.setItem('medilink_doctor', JSON.stringify(data.user))
@@ -35,7 +42,7 @@ function LoginPage() {
         } else {
           localStorage.setItem('medilink_token', data.token)
           if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
-          navigate('/dashboard') // Go to dashboard after login
+          navigate('/dashboard')
         }
       }
     } catch (err) {
