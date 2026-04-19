@@ -9,17 +9,18 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(auto()) @map("_id") @db.ObjectId
-  fullName     String
-  email        String        @unique
-  passwordHash String
-  phone        String?
-  role         String        @default("patient")
-  createdAt    DateTime      @default(now())
-  appointments Appointment[]
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  fullName         String
+  email            String            @unique
+  passwordHash     String
+  phone            String?
+  role             String            @default("patient")
+  createdAt        DateTime          @default(now())
+  appointments     Appointment[]
   followUpRequests FollowUpRequest[]
   prescriptions    Prescription[]
   notifications    Notification[]
+  medicalRecords   MedicalRecord[]
 }
 
 model Appointment {
@@ -95,4 +96,16 @@ model Notification {
 
   userId String @db.ObjectId
   user   User   @relation(fields: [userId], references: [id])
+}
+
+model MedicalRecord {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  description   String?
+  recordType    String   
+  fileUrl       String?  
+  createdAt     DateTime @default(now())
+
+  patientId     String   @db.ObjectId
+  patient       User     @relation(fields: [patientId], references: [id])
 }
