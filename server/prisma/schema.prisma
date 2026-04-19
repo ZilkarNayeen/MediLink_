@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  fullName     String
+  email        String        @unique
+  passwordHash String
+  phone        String?
+  role         String        @default("patient")
+  createdAt    DateTime      @default(now())
+  appointments Appointment[]
+  followUpRequests FollowUpRequest[]
+  prescriptions    Prescription[]
+  notifications    Notification[]
+}
+
+model Appointment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientName     String
+  dateOfBirth     String
+  gender          String
+  contactNumber   String
+  email           String
+  requestFor      String?
+  doctorOrService String?
+  appointmentDate String
+  appointmentTime String
+  status          String   @default("pending")
+  notes           String?
+  reminderSent    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  followUpRequests FollowUpRequest[]
+  prescriptions    Prescription[]
+  notifications    Notification[]
+}
+
+model FollowUpRequest {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  reason        String
+  preferredDate String?
+  preferredTime String?
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+
+  appointmentId String      @db.ObjectId
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  patientId String @db.ObjectId
+  patient   User   @relation(fields: [patientId], references: [id])
+}
+
+model Prescription {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  medicationName String
+  dosage         String
+  frequency      String
+  alertTimes     String[]
+  startDate      String
+  endDate        String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  appointmentId String      @db.ObjectId
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  patientId String @db.ObjectId
+  patient   User   @relation(fields: [patientId], references: [id])
+}
+
+model Notification {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  type    String
+  channel String
+  subject String
+  body    String
+  sentAt  DateTime @default(now())
+  success Boolean  @default(true)
+  errorMsg String?
+
+  appointmentId String?      @db.ObjectId
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+}

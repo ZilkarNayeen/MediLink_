@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  /* Brand */
+  --primary:        #0057B7;
+  --primary-light:  #2563EB;
+  --primary-dark:   #1E3A8A;
+  --accent:         #06B6D4;
+  --accent-dark:    #0891B2;
+  --violet:         #7C3AED;
+  --violet-light:   #A78BFA;
+  --pink:           #EC4899;
+  --emerald:        #10B981;
+
+  /* Gradients */
+  --grad-primary:   linear-gradient(135deg, #0057B7 0%, #2563EB 50%, #7C3AED 100%);
+  --grad-accent:    linear-gradient(135deg, #06B6D4, #10B981);
+  --grad-danger:    linear-gradient(135deg, #DC2626, #EC4899);
+  --grad-warm:      linear-gradient(135deg, #F59E0B, #EF4444);
+  --grad-cool:      linear-gradient(135deg, #7C3AED, #06B6D4);
+
+  /* Semantic */
+  --danger:         #EF4444;
+  --danger-bg:      #FEF2F2;
+  --warning:        #F59E0B;
+  --warning-bg:     #FFFBEB;
+  --success:        #10B981;
+  --success-bg:     #ECFDF5;
+
+  /* Surfaces */
+  --bg:             #F0F4FF;
+  --bg-2:           #E4ECFF;
+  --surface:        #FFFFFF;
+  --surface-2:      #F8FAFF;
+  --surface-3:      #EEF2FF;
+
+  /* Borders */
+  --border:         #DDE5FF;
+  --border-strong:  #BFCFFF;
+
+  /* Text */
+  --text:           #0F1729;
+  --text-muted:     #5B6FA8;
+  --text-light:     #94A3C4;
+  --text-on-primary:#FFFFFF;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 3px rgba(37,99,235,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:     0 4px 20px rgba(37,99,235,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg:  0 10px 40px rgba(37,99,235,0.16), 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-xl:  0 20px 60px rgba(37,99,235,0.22);
+
+  /* Geometry */
+  --radius-sm:  6px;
+  --radius:     12px;
+  --radius-lg:  16px;
+  --radius-xl:  24px;
+  --radius-full:9999px;
+
+  /* Transitions */
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+[data-theme="dark"] {
+  --bg:             #060C1F;
+  --bg-2:           #0D1630;
+  --surface:        #111827;
+  --surface-2:      #1A2540;
+  --surface-3:      #1F2D4E;
+  --border:         #1E3066;
+  --border-strong:  #2A45A0;
+  --text:           #E8EEFF;
+  --text-muted:     #8899CC;
+  --text-light:     #506080;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background-color var(--transition-slow), color var(--transition-slow);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.ml-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.ml-input {
+  width: 100%;
+  padding: 0.8rem 1.1rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  color: var(--text);
+  outline: none;
+  transition: all var(--transition);
+}
+
+.ml-input:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+}
+
+.ml-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ml-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+@keyframes ml-fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ml-fade-up {
+  animation: ml-fadeUp 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
