@@ -29,7 +29,7 @@ function LoginPage() {
       if (data.token) {
         localStorage.setItem('medilink_token', data.token)
         if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
-        navigate('/') // Go to home after login
+        navigate('/dashboard') // Go to dashboard after login
       }
     } catch (err) {
       setError(err.message)

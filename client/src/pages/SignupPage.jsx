@@ -34,7 +34,8 @@ function SignupPage() {
       if (!res.ok) throw new Error(data?.message || 'Signup failed')
       if (data.token) {
         localStorage.setItem('medilink_token', data.token)
-        navigate('/') // Go to home after signup
+        if (data.user) localStorage.setItem('medilink_user', JSON.stringify(data.user))
+        navigate('/dashboard') // Go to dashboard after signup
       }
       setSuccess('Account created! Redirecting...')
     } catch (err) {

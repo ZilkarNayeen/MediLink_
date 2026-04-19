@@ -113,18 +113,18 @@ function Dashboard() {
         <div className="dashboard-actions-grid">
           {quickActions.map((action, i) =>
             action.isButton ? (
-               action.title === 'AI Symptom Checker' ? (
-                 <button
-                   key={i}
-                   className="dashboard-action-card"
-                   onClick={action.onClick}
-                   style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(147,51,234,0.1) 100%)', borderColor: 'rgba(147,51,234,0.2)' }}
-                 >
-                   <div className="dashboard-action-icon" style={{ background: 'linear-gradient(135deg, var(--primary), #9333ea)', color: '#fff' }}>{action.icon}</div>
-                   <div className="dashboard-action-title" style={{ color: '#9333ea'}}>{action.title}</div>
-                   <div className="dashboard-action-sub">{action.sub}</div>
-                 </button>
-               ) : (
+              action.title === 'AI Symptom Checker' ? (
+                <button
+                  key={i}
+                  className="dashboard-action-card"
+                  onClick={action.onClick}
+                  style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(147,51,234,0.1) 100%)', borderColor: 'rgba(147,51,234,0.2)' }}
+                >
+                  <div className="dashboard-action-icon" style={{ background: 'linear-gradient(135deg, var(--primary), #9333ea)', color: '#fff' }}>{action.icon}</div>
+                  <div className="dashboard-action-title" style={{ color: '#9333ea' }}>{action.title}</div>
+                  <div className="dashboard-action-sub">{action.sub}</div>
+                </button>
+              ) : (
                 <button
                   key={i}
                   className={`dashboard-action-card ${action.isDanger ? 'danger' : ''}`}
@@ -134,7 +134,7 @@ function Dashboard() {
                   <div className="dashboard-action-title">{action.title}</div>
                   <div className="dashboard-action-sub">{action.sub}</div>
                 </button>
-               )
+              )
             ) : (
               <Link key={i} to={action.to} className="dashboard-action-card">
                 <div className={`dashboard-action-icon ${action.iconClass}`}>{action.icon}</div>
