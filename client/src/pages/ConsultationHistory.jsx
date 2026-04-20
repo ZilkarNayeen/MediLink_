@@ -6,6 +6,7 @@ import './ConsultationHistory.css'
 function ConsultationHistory() {
   const [appointments, setAppointments] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
+  const [followUps, setFollowUps] = useState([])
   const [loading, setLoading] = useState(true)
   const [followUpModal, setFollowUpModal] = useState(null)
   const [viewPrescriptionModal, setViewPrescriptionModal] = useState(null)
@@ -23,20 +24,30 @@ function ConsultationHistory() {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      setAppointments(data.appointments || [])
+      const [aptRes, precRes, fuRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/appointments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_BASE_URL}/prescriptions/patient`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_BASE_URL}/follow-ups`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
 
-      const precRes = await fetch(`${API_BASE_URL}/prescriptions/patient`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const aptData = await aptRes.json()
+      setAppointments(aptData.appointments || [])
+
       const precData = await precRes.json()
       setPrescriptions(precData.prescriptions || [])
+
+      const fuData = await fuRes.json()
+      setFollowUps(fuData.followUps || [])
     } catch {
       setAppointments([])
       setPrescriptions([])
+      setFollowUps([])
     } finally {
       setLoading(false)
     }
@@ -44,6 +55,10 @@ function ConsultationHistory() {
 
   const getPrescriptionForAppt = (aptId) => {
     return prescriptions.find(p => p.appointmentId === aptId)
+  }
+
+  const getFollowUpForAppt = (aptId) => {
+    return followUps.find(f => f.appointmentId === aptId)
   }
 
   const openFollowUpModal = (apt) => {
@@ -73,13 +88,29 @@ function ConsultationHistory() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
-      setMessage({ text: 'Follow-up request submitted successfully! Your doctor will be notified.', type: 'success' })
+      setMessage({ text: 'Follow-up request submitted successfully! Your doctor will be notified via email.', type: 'success' })
       setFollowUpModal(null)
+      // Refresh follow-ups
+      const fuRes = await fetch(`${API_BASE_URL}/follow-ups`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const fuData = await fuRes.json()
+      setFollowUps(fuData.followUps || [])
     } catch (err) {
       setMessage({ text: err.message || 'Something went wrong.', type: 'error' })
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const getFollowUpStatusBadge = (fu) => {
+    if (!fu) return null
+    const statusMap = {
+      pending:  { class: 'pending', label: '⏳ Follow-Up Pending', detail: 'Your follow-up request is being reviewed by your doctor.' },
+      approved: { class: 'approved', label: '✅ Follow-Up Approved', detail: `Approved! Please book your follow-up appointment.${fu.preferredDate ? ` Preferred date: ${fu.preferredDate}` : ''}` },
+      rejected: { class: 'rejected', label: '❌ Follow-Up Rejected', detail: 'Your doctor has declined this follow-up request.' },
+    }
+    return statusMap[fu.status] || null
   }
 
   return (
@@ -90,7 +121,7 @@ function ConsultationHistory() {
       <div className="history-container ml-fade-up">
         <h1 className="history-title">Consultation History</h1>
         <p className="history-subtitle">
-          View your past appointments and request follow-ups directly from any consultation.
+          View your past appointments, prescriptions, and request follow-ups directly from any consultation.
         </p>
 
         {message.text && (
@@ -111,49 +142,72 @@ function ConsultationHistory() {
 
         {!loading && appointments.length > 0 && (
           <div className="history-cards">
-            {appointments.map((apt) => (
-              <div className="history-card" key={apt.id}>
-                <div className={`history-card-accent ${apt.status}`} />
-                <div className="history-card-body">
-                  <div className="history-card-header">
-                    <h3 className="history-card-doctor">
-                      {apt.doctorOrService || 'General Consultation'}
-                    </h3>
-                    <span className={`history-status ${apt.status}`}>
-                      {apt.status}
-                    </span>
-                  </div>
+            {appointments.map((apt) => {
+              const fu = getFollowUpForAppt(apt.id)
+              const fuBadge = getFollowUpStatusBadge(fu)
 
-                  <div className="history-card-meta">
-                    <span>📅 {apt.appointmentDate}</span>
-                    <span>🕐 {apt.appointmentTime}</span>
-                  </div>
+              return (
+                <div className="history-card" key={apt.id}>
+                  <div className={`history-card-accent ${apt.status}`} />
+                  <div className="history-card-body">
+                    <div className="history-card-header">
+                      <h3 className="history-card-doctor">
+                        {apt.doctorOrService || 'General Consultation'}
+                      </h3>
+                      <span className={`history-status ${apt.status}`}>
+                        {apt.status}
+                      </span>
+                    </div>
 
-                  {apt.requestFor && (
-                    <p className="history-card-reason">
-                      <strong>Request:</strong> {apt.requestFor}
-                    </p>
-                  )}
+                    <div className="history-card-meta">
+                      <span>📅 {apt.appointmentDate}</span>
+                      <span>🕐 {apt.appointmentTime}</span>
+                    </div>
 
-                  <div className="history-actions">
-                    <button
-                      className="history-btn primary"
-                      onClick={() => openFollowUpModal(apt)}
-                    >
-                      📋 Request Follow-Up
-                    </button>
-                    {getPrescriptionForAppt(apt.id) && (
-                      <button
-                        className="history-btn success"
-                        onClick={() => setViewPrescriptionModal(getPrescriptionForAppt(apt.id))}
-                      >
-                        💊 View Prescription
-                      </button>
+                    {apt.requestFor && (
+                      <p className="history-card-reason">
+                        <strong>Request:</strong> {apt.requestFor}
+                      </p>
                     )}
+
+                    {/* ── Follow-Up Status Badge ── */}
+                    {fuBadge && (
+                      <div className={`history-followup-status ${fuBadge.class}`}>
+                        <span className="history-followup-label">{fuBadge.label}</span>
+                        <span className="history-followup-detail">{fuBadge.detail}</span>
+                      </div>
+                    )}
+
+                    <div className="history-actions">
+                      {fu ? (
+                        <button
+                          className="history-btn disabled"
+                          disabled
+                          title="Follow-up already requested"
+                        >
+                          📋 Follow-Up {fu.status === 'pending' ? 'Pending' : fu.status === 'approved' ? 'Approved' : 'Rejected'}
+                        </button>
+                      ) : (
+                        <button
+                          className="history-btn primary"
+                          onClick={() => openFollowUpModal(apt)}
+                        >
+                          📋 Request Follow-Up
+                        </button>
+                      )}
+                      {getPrescriptionForAppt(apt.id) && (
+                        <button
+                          className="history-btn success"
+                          onClick={() => setViewPrescriptionModal(getPrescriptionForAppt(apt.id))}
+                        >
+                          💊 View Prescription
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

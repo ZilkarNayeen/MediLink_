@@ -18,6 +18,7 @@ import bloodRouter from './routes/blood.js'
 import aiRouter from './routes/ai.js'
 import profileRouter from './routes/profile.js'
 import directoryRouter from './routes/directory.js'
+import notificationsRouter from './routes/notifications.js'
 import { startScheduler } from './services/scheduler.js'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
@@ -85,6 +86,7 @@ app.use('/api/blood', bloodRouter)
 app.use('/api/ai', aiRouter)
 app.use('/api/profile', profileRouter)
 app.use('/api/directory', directoryRouter)
+app.use('/api/notifications', notificationsRouter)
 
 // ── Socket.io JWT Authentication Middleware ──
 io.use((socket, next) => {

@@ -20,6 +20,7 @@ import DiscoveryHub from './pages/DiscoveryHub.jsx'
 import HospitalsDirectory from './pages/HospitalsDirectory.jsx'
 import HospitalDetails from './pages/HospitalDetails.jsx'
 import ServicesDirectory from './pages/ServicesDirectory.jsx'
+import NotificationCenter from './pages/NotificationCenter.jsx'
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
       <Route path="/records" element={<MedicalRecords />} />
       <Route path="/messages" element={<Messages />} />
       <Route path="/schedule" element={<MySchedule />} />
+      <Route path="/notifications" element={<NotificationCenter />} />
       <Route path="/blood-bank" element={<BloodBank />} />
       <Route path="/discovery" element={<DiscoveryHub />} />
       <Route path="/discovery/hospitals" element={<HospitalsDirectory />} />

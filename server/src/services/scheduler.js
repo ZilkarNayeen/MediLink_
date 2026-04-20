@@ -5,6 +5,7 @@ import { sendNotification } from './notificationService.js'
 import {
   appointmentReminderEmail,
   medicationAlertEmail,
+  followUpReminderEmail,
 } from './emailTemplates.js'
 
 const prisma = new PrismaClient()
@@ -115,11 +116,82 @@ export function startScheduler() {
             html,
           })
 
+          // Log the medication alert notification
+          await prisma.notification.create({
+            data: {
+              type: 'medication',
+              channel: 'email',
+              subject,
+              body: `Medication reminder for ${rx.medicationName} (${rx.dosage}) at ${currentTime}`,
+              userId: rx.patientId,
+              appointmentId: rx.appointmentId,
+            },
+          })
+
           console.log(`💊 Medication alert sent to ${rx.patient.email} for ${rx.medicationName}`)
         }
       }
     } catch (error) {
       logger.error('⏰ Medication alert job error:', error)
+    }
+  })
+
+  // ── Run daily at 9 AM: follow-up reminders for completed appointments ──
+  cron.schedule('0 9 * * *', async () => {
+    console.log('📋 Checking for follow-up reminders...')
+    try {
+      // Look for appointments from 7 days ago that are confirmed/completed
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      const targetDate = sevenDaysAgo.toISOString().split('T')[0]
+
+      const appointments = await prisma.appointment.findMany({
+        where: {
+          appointmentDate: targetDate,
+          status: { in: ['confirmed', 'completed'] },
+        },
+        include: {
+          user: true,
+          followUpRequests: true,
+        },
+      })
+
+      // Filter to only those with NO follow-up requests
+      const needsFollowUp = appointments.filter(
+        (apt) => apt.followUpRequests.length === 0
+      )
+
+      for (const apt of needsFollowUp) {
+        const { subject, html } = followUpReminderEmail({
+          patientName: apt.patientName,
+          doctorOrService: apt.doctorOrService,
+          originalDate: apt.appointmentDate,
+        })
+
+        await sendNotification({
+          email: apt.email,
+          subject,
+          html,
+        })
+
+        // Log the follow-up reminder notification
+        await prisma.notification.create({
+          data: {
+            type: 'follow_up_reminder',
+            channel: 'email',
+            subject,
+            body: `Follow-up reminder sent for appointment on ${apt.appointmentDate} with ${apt.doctorOrService || 'General'}`,
+            userId: apt.userId,
+            appointmentId: apt.id,
+          },
+        })
+      }
+
+      if (needsFollowUp.length > 0) {
+        console.log(`📋 Sent ${needsFollowUp.length} follow-up reminder(s)`)
+      }
+    } catch (error) {
+      logger.error('⏰ Follow-up reminder job error:', error)
     }
   })
 }

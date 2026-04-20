@@ -234,3 +234,52 @@
   gap: 0.75rem;
   margin-top: 2rem;
 }
+
+/* ── Follow-Up Status Badge ── */
+.history-followup-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+  border-left: 4px solid;
+  animation: ml-fadeIn 0.2s ease;
+}
+
+.history-followup-status.pending {
+  background: var(--warning-bg);
+  border-left-color: #F59E0B;
+}
+
+.history-followup-status.approved {
+  background: var(--success-bg);
+  border-left-color: #10B981;
+}
+
+.history-followup-status.rejected {
+  background: var(--danger-bg);
+  border-left-color: #EF4444;
+}
+
+.history-followup-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.history-followup-detail {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Disabled button ── */
+.history-btn.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+

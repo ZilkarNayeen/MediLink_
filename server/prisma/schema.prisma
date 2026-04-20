@@ -101,6 +101,7 @@ model Notification {
   channel String
   subject String
   body    String
+  read    Boolean  @default(false)
   sentAt  DateTime @default(now())
   success Boolean  @default(true)
   errorMsg String?

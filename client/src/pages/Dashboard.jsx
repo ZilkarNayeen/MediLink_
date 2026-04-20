@@ -130,6 +130,13 @@ function Dashboard() {
       sub: 'Lab results, X-rays & notes',
     },
     {
+      to: '/notifications',
+      icon: '🔔',
+      iconClass: 'teal',
+      title: 'Notifications',
+      sub: 'Alerts, reminders & updates',
+    },
+    {
       isButton: true,
       onClick: () => setShowAiModal(true),
       icon: '🤖',
