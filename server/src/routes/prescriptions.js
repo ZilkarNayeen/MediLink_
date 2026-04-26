@@ -30,6 +30,12 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' })
     }
 
+    // Ensure start date is not in the past
+    const today = new Date().toISOString().split('T')[0];
+    if (startDate < today) {
+      return res.status(400).json({ message: 'Prescription start date cannot be in the past' })
+    }
+
     // Verify appointment exists and belongs to the current doctor
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },

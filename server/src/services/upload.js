@@ -8,7 +8,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 })
 
-// ── Allowed MIME types ──
+// Allowed types
 const ALLOWED_MIMETYPES = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
   'application/pdf',
@@ -16,10 +16,10 @@ const ALLOWED_MIMETYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 
-// ── Store in memory, upload to Cloudinary manually ──
+// Memory storage setup
 export const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB cap
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB cap
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED_MIMETYPES.includes(file.mimetype)) {
       return cb(new Error('Only images (JPEG/PNG/WebP), PDFs and Word docs are allowed.'))
@@ -28,7 +28,7 @@ export const upload = multer({
   },
 })
 
-// ── Helper: upload buffer to Cloudinary ──
+// Cloudinary upload helper
 export async function uploadToCloudinary(buffer, mimetype, folder = 'medilink_uploads') {
   return new Promise((resolve, reject) => {
     const resourceType = mimetype.startsWith('image/') ? 'image' : 'raw'

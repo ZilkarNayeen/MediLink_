@@ -9,7 +9,7 @@ const router = express.Router()
 
 router.use(authenticate)
 
-// ─── GET /api/records ─── Get records for the logged-in patient
+// Get patient records
 router.get('/', async (req, res) => {
   try {
     if (req.user.role === 'doctor') {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
   }
 })
 
-// ─── GET /api/records/patient/:id ─── Get records of a patient (Doctor only)
+// Get patient history
 router.get('/patient/:id', async (req, res) => {
   try {
     if (req.user.role !== 'doctor') {
@@ -36,7 +36,7 @@ router.get('/patient/:id', async (req, res) => {
 
     const patientId = req.params.id
 
-    // Check if the doctor is currently treating or has treated this patient
+    // Check relationship
     const doctorObj = await prisma.user.findUnique({ where: { id: req.user.userId }, select: { fullName: true } })
     const linked = await prisma.appointment.findFirst({
       where: { userId: patientId, doctorOrService: doctorObj.fullName }
@@ -59,7 +59,7 @@ router.get('/patient/:id', async (req, res) => {
   }
 })
 
-// ─── POST /api/records ─── Upload a medical record
+// Upload medical record
 router.post('/', upload.single('document'), async (req, res) => {
   try {
     const { title, description, recordType, appointmentId, targetPatientId } = req.body
@@ -74,7 +74,7 @@ router.post('/', upload.single('document'), async (req, res) => {
       if (!targetPatientId) {
         return res.status(400).json({ message: 'Doctors must specify a targetPatientId' })
       }
-      // IDOR fix: verify the patient has an appointment with this doctor
+      // IDOR check
       const doctorObj = await prisma.user.findUnique({ where: { id: req.user.userId }, select: { fullName: true } })
       const linked = await prisma.appointment.findFirst({
         where: { userId: targetPatientId, doctorOrService: doctorObj.fullName }
@@ -85,7 +85,7 @@ router.post('/', upload.single('document'), async (req, res) => {
       patientId = targetPatientId
     }
 
-    // Upload file to Cloudinary if provided
+    // Process cloudinary upload
     let fileUrl = null
     if (req.file) {
       const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype)

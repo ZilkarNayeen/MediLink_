@@ -4,57 +4,63 @@ import { API_BASE_URL } from '../config.js'
 import { Navbar, BottomNav } from '../components/Navbar.jsx'
 import './Messages.css'
 
+// Name initials
 const initials = (name = '') => name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
 
 function Messages() {
-  const [conversations, setConversations] = useState([])
-  const [activeConvo, setActiveConvo] = useState(null)
-  const [messages, setMessages] = useState([])
-  const [text, setText] = useState('')
-  const [socket, setSocket] = useState(null)
-  const [showCompose, setShowCompose] = useState(false)
-  const [availableDoctors, setAvailableDoctors] = useState([])
-  const [attachment, setAttachment] = useState(null)
-  const [showChat, setShowChat] = useState(false)
+  // Page states
+  const [conversations, setConversations] = useState([]) // Chat list
+  const [activeConvo, setActiveConvo] = useState(null) // Active chat
+  const [messages, setMessages] = useState([]) // Message history
+  const [text, setText] = useState('') // Input text
+  const [socket, setSocket] = useState(null) // Socket instance
+  const [showCompose, setShowCompose] = useState(false) // Toggle search
+  const [availableDoctors, setAvailableDoctors] = useState([]) // Doctor list
+  const [attachment, setAttachment] = useState(null) // Chat file
+  const [showChat, setShowChat] = useState(false) // Mobile view
 
-  // ── WebRTC Telemedicine States ──
-  const [stream, setStream] = useState(null)
-  const [receivingCall, setReceivingCall] = useState(false)
-  const [callerData, setCallerData] = useState(null)
-  const [callAccepted, setCallAccepted] = useState(false)
-  const [isCalling, setIsCalling] = useState(false)
-  const [callEnded, setCallEnded] = useState(true) // Default true means no active UI
+  // Call states
+  const [stream, setStream] = useState(null) // Media stream
+  const [receivingCall, setReceivingCall] = useState(false) // Incoming call
+  const [callerData, setCallerData] = useState(null) // Caller info
+  const [callAccepted, setCallAccepted] = useState(false) // Accepted state
+  const [isCalling, setIsCalling] = useState(false) // Dialing state
+  const [callEnded, setCallEnded] = useState(true) // Ended state
 
-  const localVideoRef = useRef(null)
-  const remoteVideoRef = useRef(null)
-  const connectionRef = useRef(null)
-  const messagesEndRef = useRef(null)
+  const localVideoRef = useRef(null) // Local preview
+  const remoteVideoRef = useRef(null) // Remote preview
+  const connectionRef = useRef(null) // RTC connection
+  const messagesEndRef = useRef(null) // Scroll anchor
 
+  // Get auth
   const token = localStorage.getItem('medilink_token') || localStorage.getItem('medilink_doctor_token')
   const userStr = localStorage.getItem('medilink_user') || localStorage.getItem('medilink_doctor')
   const currentUser = userStr ? JSON.parse(userStr) : null
   const isDoctor = currentUser?.role === 'doctor'
   const role = isDoctor ? 'doctor' : 'patient'
 
+  // Load socket
   useEffect(() => {
     fetchConversations()
     const socketUrl = API_BASE_URL.replace('/api', '')
-    const sock = io(socketUrl, { auth: { token } }) // ← secure: JWT in handshake
+    const sock = io(socketUrl, { auth: { token } }) // Secure link
     setSocket(sock)
 
     if (currentUser?.id) {
-      sock.emit('join_chat', currentUser.id)
+      sock.emit('join_chat', currentUser.id) // Join room
     }
 
+    // New message
     sock.on('receive_message', (msg) => setMessages(prev => [...prev, msg]))
 
-    // ── WebRTC Listeners ──
+    // Handle call
     sock.on('call_user', (data) => {
       setReceivingCall(true)
       setCallerData(data)
       setCallEnded(false)
     })
 
+    // Accepted call
     sock.on('call_accepted', async (signal) => {
       setCallAccepted(true)
       if (connectionRef.current) {
@@ -62,30 +68,33 @@ function Messages() {
       }
     })
 
+    // ICE signaling
     sock.on('ice_candidate', async (candidate) => {
       if (connectionRef.current) {
         try {
           await connectionRef.current.addIceCandidate(new RTCIceCandidate(candidate))
         } catch (e) {
-          console.error("Error adding received ice candidate", e)
+          console.error("ICE error", e)
         }
       }
     })
 
-    return () => sock.disconnect()
+    return () => sock.disconnect() // Disconnect socket
   }, [])
 
+  // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Media streams must be linked to video elements
+  // Bind video
   useEffect(() => {
     if (localVideoRef.current && stream) {
       localVideoRef.current.srcObject = stream
     }
   }, [stream, isCalling, receivingCall])
 
+  // Get threads
   const fetchConversations = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/messages/conversations`, {
@@ -96,6 +105,7 @@ function Messages() {
     } catch {}
   }
 
+  // View chat
   const openConversation = async (convo) => {
     setActiveConvo(convo)
     setShowCompose(false)
@@ -109,6 +119,7 @@ function Messages() {
     } catch {}
   }
 
+  // Get doctors
   const fetchAvailableDoctors = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/doctors`)
@@ -120,6 +131,7 @@ function Messages() {
     } catch {}
   }
 
+  // New thread
   const startNewConversation = (doctor) => {
     const existing = conversations.find(c => c.otherUser?.id === doctor.id)
     if (existing) { openConversation(existing); return }
@@ -128,51 +140,50 @@ function Messages() {
     setShowCompose(false)
   }
 
+  // Send message
   const sendMessage = async (e) => {
     e.preventDefault()
     if ((!text.trim() && !attachment) || !activeConvo) return
     const receiverId = activeConvo.otherUser.id
     try {
-      const formData = new FormData()
+      const formData = new FormData() // Body data
       formData.append('receiverId', receiverId)
       if (text.trim()) formData.append('content', text)
       if (attachment) formData.append('attachment', attachment)
       const res = await fetch(`${API_BASE_URL}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        body: formData // Form upload
       })
       const saved = await res.json()
-      if (!res.ok) throw new Error('Failed to send')
+      if (!res.ok) throw new Error('Send failed')
       setMessages(prev => [...prev, saved.message])
       if (activeConvo.id === 'new') {
         fetchConversations()
         setActiveConvo(prev => ({ ...prev, id: saved.conversationId }))
       }
-      socket?.emit('send_message', { receiverId, messageData: saved.message })
+      socket?.emit('send_message', { receiverId, messageData: saved.message }) // Realtime push
       setText('')
       setAttachment(null)
     } catch (err) { console.error(err) }
   }
 
-  /* ================================================================
-     WebRTC Telemedicine Logic
-     ================================================================ */
+  /* Video engine */
 
+  // Setup peer
   const setupPeerConnection = () => {
     const configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
     const peerConnection = new RTCPeerConnection(configuration)
     
-    // Send ICE candidates to remote naturally
+    // RTC signaling
     peerConnection.addEventListener('icecandidate', event => {
       if (event.candidate && socket && activeConvo) {
-         // If dialing, receiver is activeConvo. If receiving, caller is callerData.from
          const toId = isCalling ? activeConvo.otherUser.id : callerData.from
          socket.emit('ice_candidate', { to: toId, candidate: event.candidate })
       }
     })
 
-    // Listen for remote track
+    // Remote track
     peerConnection.addEventListener('track', event => {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0]
@@ -182,12 +193,13 @@ function Messages() {
     return peerConnection
   }
 
+  // Start call
   const startCall = async () => {
     if (!activeConvo) return
     setIsCalling(true)
     setCallEnded(false)
     try {
-      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }) // Capture media
       setStream(currentStream)
 
       const peerConnection = setupPeerConnection()
@@ -197,7 +209,7 @@ function Messages() {
         peerConnection.addTrack(track, currentStream)
       })
 
-      const offer = await peerConnection.createOffer()
+      const offer = await peerConnection.createOffer() // RTC offer
       await peerConnection.setLocalDescription(offer)
 
       socket.emit('call_user', {
@@ -207,15 +219,16 @@ function Messages() {
         name: currentUser.fullName
       })
     } catch (err) {
-      console.error("Failed to start call", err)
+      console.error("Call error", err)
       leaveCall()
     }
   }
 
+  // Answer call
   const answerCall = async () => {
     setCallAccepted(true)
     try {
-      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }) // Request camera
       setStream(currentStream)
 
       const peerConnection = setupPeerConnection()
@@ -226,16 +239,17 @@ function Messages() {
       })
 
       await peerConnection.setRemoteDescription(new RTCSessionDescription(callerData.signal))
-      const answer = await peerConnection.createAnswer()
+      const answer = await peerConnection.createAnswer() // RTC answer
       await peerConnection.setLocalDescription(answer)
 
       socket.emit('answer_call', { signal: answer, to: callerData.from })
     } catch (err) {
-      console.error("Failed to answer call", err)
+      console.error("Answer error", err)
       leaveCall()
     }
   }
 
+  // Leave call
   const leaveCall = () => {
     setCallEnded(true)
     setIsCalling(false)
@@ -244,26 +258,27 @@ function Messages() {
     setCallerData(null)
     
     if (stream) {
-      stream.getTracks().forEach(track => track.stop())
+      stream.getTracks().forEach(track => track.stop()) // Stop hardware
       setStream(null)
     }
     if (connectionRef.current) {
-      connectionRef.current.close()
+      connectionRef.current.close() // Close network
       connectionRef.current = null
     }
   }
 
+  // Video UI
   const VideoModal = () => {
     if (callEnded) return null
 
-    // Call Ringing
+    // Ringing UI
     if (receivingCall && !callAccepted) {
       return (
         <div className="video-call-overlay">
           <div className="video-call-body">
             <div className="incoming-call-box">
               <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Video Call</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>{callerData?.name} is calling you...</p>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>{callerData?.name} calling...</p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                 <button className="video-btn video-btn-end" onClick={leaveCall}>✖</button>
                 <button className="video-btn video-btn-accept" onClick={answerCall}>📞</button>
@@ -274,13 +289,13 @@ function Messages() {
       )
     }
 
-    // Call Active / Dialing
+    // Live view
     return (
       <div className="video-call-overlay">
         <div className="video-call-header">
           <div>
             <h2 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800 }}>MediLink Telemedicine</h2>
-            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>Secure WebRTC Connection</p>
+            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>Secure WebRTC</p>
           </div>
           <span style={{ background: 'rgba(255,255,255,0.2)', padding: '0.3rem 0.8rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>
             {callAccepted ? 'LIVE' : 'DIALING...'}
@@ -291,7 +306,7 @@ function Messages() {
           {callAccepted ? (
             <video playsInline ref={remoteVideoRef} autoPlay className="video-remote" />
           ) : (
-            <div style={{ fontSize: '1.2rem', opacity: 0.5, fontWeight: 'bold' }}>Waiting for {activeConvo?.otherUser?.fullName} to answer...</div>
+            <div style={{ fontSize: '1.2rem', opacity: 0.5, fontWeight: 'bold' }}>Waiting...</div>
           )}
           {stream && (
             <video playsInline muted ref={localVideoRef} autoPlay className="video-local" />
@@ -311,7 +326,7 @@ function Messages() {
       <VideoModal />
 
       <div className="messages-container">
-        {/* ── Sidebar ── */}
+        {/* Inbox sidebar */}
         <div className={`messages-sidebar ${showChat ? 'hidden' : ''}`}>
           <div className="messages-sidebar-header">
             <h2>Inbox</h2>
@@ -324,7 +339,7 @@ function Messages() {
             {conversations.length === 0 && (
               <div className="messages-empty" style={{ marginTop: '2rem' }}>
                 <span className="messages-empty-icon">💬</span>
-                <span className="messages-empty-text">No conversations yet</span>
+                <span className="messages-empty-text">No chats</span>
               </div>
             )}
             {conversations.map(convo => (
@@ -345,7 +360,7 @@ function Messages() {
           </div>
         </div>
 
-        {/* ── Chat Area ── */}
+        {/* Messaging Area */}
         <div className={`messages-chat-area ${showChat ? 'visible' : ''}`}>
           {showCompose ? (
             <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
@@ -355,7 +370,7 @@ function Messages() {
               >
                 ← Back
               </button>
-              <h2 style={{ marginBottom: '1rem', color: 'var(--text)' }}>Select a Doctor</h2>
+              <h2 style={{ marginBottom: '1rem', color: 'var(--text)' }}>Select Doctor</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {availableDoctors.map(doc => (
                   <div
@@ -367,7 +382,7 @@ function Messages() {
                     <div className="messages-convo-avatar">{initials(doc.fullName)}</div>
                     <div>
                       <p style={{ fontWeight: 700, color: 'var(--text)', margin: 0 }}>{doc.fullName}</p>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>{doc.specialty || 'General Practitioner'}</p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>{doc.specialty}</p>
                     </div>
                     <span style={{ marginLeft: 'auto', color: 'var(--primary)', fontWeight: 700, fontSize: '0.85rem' }}>Message →</span>
                   </div>
@@ -376,9 +391,8 @@ function Messages() {
             </div>
           ) : activeConvo ? (
             <>
-              {/* Header */}
+              {/* Chat Header */}
               <div className="messages-chat-header">
-                {/* Mobile Back Button */}
                 <button
                   className="messages-mobile-back"
                   onClick={() => setShowChat(false)}
@@ -391,26 +405,25 @@ function Messages() {
                 </div>
                 <div className="messages-chat-header-info" style={{ flex: 1 }}>
                   <h3>{activeConvo.otherUser.fullName}</h3>
-                  <p>{activeConvo.otherUser.role === 'doctor' ? 'Clinical Staff' : 'Patient'}</p>
+                  <p>{activeConvo.otherUser.role}</p>
                 </div>
                 
-                {/* 📹 Start Video Call Hook */}
+                {/* Video call */}
                 {activeConvo.id !== 'new' && (
                   <button 
                     onClick={startCall}
                     style={{ 
                       background: 'linear-gradient(135deg, #059669, #10B981)', color: 'white', 
                       border: 'none', padding: '0.6rem 1rem', borderRadius: '8px', 
-                      fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                      boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'all 0.2s'
+                      fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
                     }}
                   >
-                    📹 Video Call
+                    📹 Video
                   </button>
                 )}
               </div>
 
-              {/* Messages */}
+              {/* Messages area */}
               <div className="messages-area">
                 {messages.length === 0 && (
                   <div className="messages-empty">
@@ -423,10 +436,10 @@ function Messages() {
                   return (
                     <div key={i} className={isMine ? 'message-my' : 'message-other'}>
                       <div>{m.content}</div>
-                      {m.attachmentUrl && (
+                      {m.fileUrl && (
                         <div style={{ marginTop: '0.5rem' }}>
-                          <a href={m.attachmentUrl} target="_blank" rel="noreferrer" style={{ color: isMine ? '#fff' : 'var(--primary)', fontWeight: 'bold', fontSize: '0.8rem', textDecoration: 'underline' }}>
-                            📎 View Attachment
+                          <a href={m.fileUrl} target="_blank" rel="noreferrer" style={{ color: isMine ? '#fff' : 'var(--primary)', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                            📎 Attachment
                           </a>
                         </div>
                       )}
@@ -439,7 +452,7 @@ function Messages() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input box */}
+              {/* Chat form */}
               <form className="messages-input-area" onSubmit={sendMessage}>
                 <button type="button" className="messages-attach-btn" onClick={() => document.getElementById('chat-upload').click()}>
                   +
@@ -461,7 +474,7 @@ function Messages() {
                   <input
                     className="messages-input-field"
                     type="text"
-                    placeholder="Type a message..."
+                    placeholder="Type message..."
                     value={text}
                     onChange={e => setText(e.target.value)}
                   />
@@ -475,12 +488,12 @@ function Messages() {
           ) : (
             <div className="messages-empty">
               <span className="messages-empty-icon">⚡</span>
-              <span className="messages-empty-text">Select a conversation to start</span>
+              <span className="messages-empty-text">Select chat</span>
             </div>
           )}
         </div>
       </div>
-      <BottomNav role={role} />
+      <BottomNav role="patient" />
     </div>
   )
 }

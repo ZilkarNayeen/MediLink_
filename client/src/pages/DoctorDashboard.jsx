@@ -49,7 +49,7 @@ function DoctorDashboard() {
   const [loadingFollowUps, setLoadingFollowUps] = useState(true)
 
   // Availability / Working Hours state
-  const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+  const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
   const defaultDay = { start: '09:00', end: '17:00', off: false }
   const [workingHours, setWorkingHours] = useState(() => {
     const saved = window.localStorage.getItem('medilink_doctor_wh')
@@ -252,7 +252,7 @@ function DoctorDashboard() {
   const handlePrescribe = async () => {
     const { medicationName, dosage, frequency, startDate } = prescriptionData
     if (!medicationName || !dosage || !frequency || !startDate) return
-    
+
     setPrescribing(true)
     try {
       const res = await fetch(`${API_BASE_URL}/prescriptions`, {
@@ -327,13 +327,13 @@ function DoctorDashboard() {
     setEhrData(null)
     setEhrRecords([])
     setActionMsg({ text: '', type: '' })
-    
+
     try {
       const [profileRes, recordsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/profile/patient/${apt.userId}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE_URL}/records/patient/${apt.userId}`, { headers: { Authorization: `Bearer ${token}` } })
       ])
-      
+
       if (profileRes.ok) {
         const prodData = await profileRes.json()
         setEhrData(prodData.profile)
@@ -370,7 +370,7 @@ function DoctorDashboard() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
-      
+
       setEhrRecords([data.record, ...ehrRecords])
       setUploadFile(null)
       setUploadTitle('')
@@ -444,98 +444,98 @@ function DoctorDashboard() {
         {activeTab === 'appointments' && (
           <>
             {loading && <p style={{ color: 'var(--text-muted)' }}>Loading appointments…</p>}
-        {error && <p className="doctor-signup-error" style={{ maxWidth: 600 }}>{error}</p>}
+            {error && <p className="doctor-signup-error" style={{ maxWidth: 600 }}>{error}</p>}
 
-        {!loading && !error && appointments.length === 0 && (
-          <p style={{ color: 'var(--text-muted)' }}>No appointments yet.</p>
-        )}
+            {!loading && !error && appointments.length === 0 && (
+              <p style={{ color: 'var(--text-muted)' }}>No appointments yet.</p>
+            )}
 
-        {!loading && appointments.length > 0 && (
-          <>
-            {/* Desktop Table */}
-            <div className="appointments-table-wrapper">
-              <table className="appointments-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Patient</th>
-                    <th>Email</th>
-                    <th>Contact</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Request</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {appointments.map((apt, i) => (
-                    <tr key={apt.id}>
-                      <td>{i + 1}</td>
-                      <td style={{ fontWeight: 600 }}>{apt.patientName}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{apt.email}</td>
-                      <td>{apt.contactNumber}</td>
-                      <td>{apt.appointmentDate}</td>
-                      <td>{apt.appointmentTime}</td>
-                      <td>{apt.requestFor || '—'}</td>
-                      <td>
-                        <span className={`status-badge status-${apt.status}`}>{apt.status}</span>
-                      </td>
-                      <td>
-                        <div className="doc-actions-cell">
-                          {(apt.status === 'pending' || apt.status === 'rescheduled') && (
-                            <button className="doc-accept-btn" onClick={() => handleAccept(apt.id)}>✓ Accept</button>
-                          )}
-                          {apt.status !== 'cancelled' && (
-                            <button className="doc-reschedule-btn" onClick={() => openReschedule(apt)}>📅 Reschedule</button>
-                          )}
-                          {apt.status === 'confirmed' && (
-                            <>
-                              <button className="doc-accept-btn" style={{ background: 'var(--success-bg)', color: '#059669' }} onClick={() => openPrescribe(apt)}>✍️ Prescribe</button>
-                              <button className="doc-accept-btn" style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#0284c7' }} onClick={() => openEHR(apt)}>🏥 View EHR</button>
-                              <button className="doc-accept-btn" style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }} onClick={() => openReferral(apt)}>🔀 Refer</button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="appointments-mobile-list">
-              {appointments.map(apt => (
-                <div key={apt.id} className="appt-mobile-card">
-                  <div className="appt-mobile-card-header">
-                    <span className="appt-mobile-card-name">{apt.patientName}</span>
-                    <span className={`status-badge status-${apt.status}`}>{apt.status}</span>
-                  </div>
-                  <p className="appt-mobile-card-meta">📅 {apt.appointmentDate} at {apt.appointmentTime}</p>
-                  <p className="appt-mobile-card-meta">📋 {apt.requestFor || 'General Consultation'}</p>
-                  <div className="appt-mobile-actions">
-                    {(apt.status === 'pending' || apt.status === 'rescheduled') && (
-                      <button className="doc-accept-btn" onClick={() => handleAccept(apt.id)}>✓ Accept</button>
-                    )}
-                    {apt.status !== 'cancelled' && (
-                      <button className="doc-reschedule-btn" onClick={() => openReschedule(apt)}>📅 Reschedule</button>
-                    )}
-                    {apt.status === 'confirmed' && (
-                      <>
-                        <button className="doc-accept-btn" style={{ background: 'var(--success-bg)', color: '#059669' }} onClick={() => openPrescribe(apt)}>✍️ Prescribe</button>
-                        <button className="doc-accept-btn" style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#0284c7' }} onClick={() => openEHR(apt)}>🏥 View EHR</button>
-                        <button className="doc-accept-btn" style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }} onClick={() => openReferral(apt)}>🔀 Refer</button>
-                      </>
-                    )}
-                  </div>
+            {!loading && appointments.length > 0 && (
+              <>
+                {/* Desktop Table */}
+                <div className="appointments-table-wrapper">
+                  <table className="appointments-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Patient</th>
+                        <th>Email</th>
+                        <th>Contact</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Request</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {appointments.map((apt, i) => (
+                        <tr key={apt.id}>
+                          <td>{i + 1}</td>
+                          <td style={{ fontWeight: 600 }}>{apt.patientName}</td>
+                          <td style={{ color: 'var(--text-muted)' }}>{apt.email}</td>
+                          <td>{apt.contactNumber}</td>
+                          <td>{apt.appointmentDate}</td>
+                          <td>{apt.appointmentTime}</td>
+                          <td>{apt.requestFor || '—'}</td>
+                          <td>
+                            <span className={`status-badge status-${apt.status}`}>{apt.status}</span>
+                          </td>
+                          <td>
+                            <div className="doc-actions-cell">
+                              {(apt.status === 'pending' || apt.status === 'rescheduled') && (
+                                <button className="doc-accept-btn" onClick={() => handleAccept(apt.id)}>✓ Accept</button>
+                              )}
+                              {apt.status !== 'cancelled' && (
+                                <button className="doc-reschedule-btn" onClick={() => openReschedule(apt)}>📅 Reschedule</button>
+                              )}
+                              {apt.status === 'confirmed' && (
+                                <>
+                                  <button className="doc-accept-btn" style={{ background: 'var(--success-bg)', color: '#059669' }} onClick={() => openPrescribe(apt)}>✍️ Prescribe</button>
+                                  <button className="doc-accept-btn" style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#0284c7' }} onClick={() => openEHR(apt)}>🏥 View EHR</button>
+                                  <button className="doc-accept-btn" style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }} onClick={() => openReferral(apt)}>🔀 Refer</button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
+
+                {/* Mobile Cards */}
+                <div className="appointments-mobile-list">
+                  {appointments.map(apt => (
+                    <div key={apt.id} className="appt-mobile-card">
+                      <div className="appt-mobile-card-header">
+                        <span className="appt-mobile-card-name">{apt.patientName}</span>
+                        <span className={`status-badge status-${apt.status}`}>{apt.status}</span>
+                      </div>
+                      <p className="appt-mobile-card-meta">📅 {apt.appointmentDate} at {apt.appointmentTime}</p>
+                      <p className="appt-mobile-card-meta">📋 {apt.requestFor || 'General Consultation'}</p>
+                      <div className="appt-mobile-actions">
+                        {(apt.status === 'pending' || apt.status === 'rescheduled') && (
+                          <button className="doc-accept-btn" onClick={() => handleAccept(apt.id)}>✓ Accept</button>
+                        )}
+                        {apt.status !== 'cancelled' && (
+                          <button className="doc-reschedule-btn" onClick={() => openReschedule(apt)}>📅 Reschedule</button>
+                        )}
+                        {apt.status === 'confirmed' && (
+                          <>
+                            <button className="doc-accept-btn" style={{ background: 'var(--success-bg)', color: '#059669' }} onClick={() => openPrescribe(apt)}>✍️ Prescribe</button>
+                            <button className="doc-accept-btn" style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#0284c7' }} onClick={() => openEHR(apt)}>🏥 View EHR</button>
+                            <button className="doc-accept-btn" style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }} onClick={() => openReferral(apt)}>🔀 Refer</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
-        </>
-      )}
 
         {/* ── Follow-Up Queue Tab ── */}
         {activeTab === 'followUps' && (
@@ -586,7 +586,7 @@ function DoctorDashboard() {
             <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
               <h2 style={{ margin: '0 0 1rem 0' }}>Working Hours</h2>
               <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Define your exact shift times. Patients will only be able to book 30-minute slots within these windows.</p>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {DAYS.map(day => (
                   <div
@@ -692,7 +692,7 @@ function DoctorDashboard() {
                 placeholder="e.g. Amoxicillin"
               />
             </div>
-            
+
             <div className="doc-modal-field">
               <label>Dosage *</label>
               <input
@@ -807,9 +807,9 @@ function DoctorDashboard() {
               <h2 style={{ margin: 0 }}>🏥 Patient EHR</h2>
               <button onClick={() => setEhrModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
             </div>
-            
+
             {ehrLoading ? (
-               <p style={{ color: 'var(--text-muted)' }}>Loading records...</p>
+              <p style={{ color: 'var(--text-muted)' }}>Loading records...</p>
             ) : (
               <div style={{ maxHeight: '65vh', overflowY: 'auto', paddingRight: '0.5rem' }}>
                 {ehrData && (
@@ -822,15 +822,15 @@ function DoctorDashboard() {
                     </div>
                   </div>
                 )}
-                
+
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Upload Clinical Note</h3>
                 <form onSubmit={handleUploadRecord} style={{ background: 'rgba(99,102,241,0.05)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                   <input type="text" placeholder="Record Title (e.g. Lab Results)" required value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #d1d5db' }}/>
-                   <select value={uploadType} onChange={e => setUploadType(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #d1d5db' }}>
-                     <option>Lab Result</option><option>Prescription</option><option>Clinical Note</option><option>Other</option>
-                   </select>
-                   <input type="file" required onChange={e => setUploadFile(e.target.files[0])} style={{ padding: '0.6rem', border: '1px lightly dashed #d1d5db', borderRadius: '6px' }} />
-                   <button type="submit" className="doc-modal-submit" disabled={uploading} style={{ alignSelf: 'flex-start' }}>{uploading ? 'Uploading...' : 'Upload Record'}</button>
+                  <input type="text" placeholder="Record Title (e.g. Lab Results)" required value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+                  <select value={uploadType} onChange={e => setUploadType(e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #d1d5db' }}>
+                    <option>Lab Result</option><option>Prescription</option><option>Clinical Note</option><option>Other</option>
+                  </select>
+                  <input type="file" required onChange={e => setUploadFile(e.target.files[0])} style={{ padding: '0.6rem', border: '1px lightly dashed #d1d5db', borderRadius: '6px' }} />
+                  <button type="submit" className="doc-modal-submit" disabled={uploading} style={{ alignSelf: 'flex-start' }}>{uploading ? 'Uploading...' : 'Upload Record'}</button>
                 </form>
 
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Past Records</h3>
@@ -849,7 +849,7 @@ function DoctorDashboard() {
                 )}
               </div>
             )}
-            
+
             {actionMsg.text && <p style={{ marginTop: '1rem', padding: '0.5rem', borderRadius: '6px', background: actionMsg.type === 'error' ? 'var(--error-glow)' : 'var(--success-bg)', color: actionMsg.type === 'error' ? 'var(--error)' : 'green' }}>{actionMsg.text}</p>}
           </div>
         </div>
